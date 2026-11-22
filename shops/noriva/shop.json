@@ -1,0 +1,36 @@
+{
+  "name": "NORIVA",
+  "data_dir": "data",
+  "intro": "NORIVA - thương hiệu thời trang LifeWear (áo thun AIRism, áo khoác chống UV, áo phao, quần...)",
+  "intent_label": "shop thời trang NORIVA",
+  "knowledge_examples": "đổi trả, bảo hành, vận chuyển, thanh toán, giặt, chất liệu...",
+  "size_advice": true,
+  "size_exchange_note": "Nếu mặc không vừa, bạn được đổi size miễn phí trong 30 ngày khi còn nguyên tem mác.",
+  "product_keywords": ["parka", "airism", "cardigan", "smart ankle", "linen", "ultra light", "polo", "kinh mat",
+                       "ao chong uv", "ao khoac", "ao thun", "quan dai", "ao phao", "so mi"],
+  "defect_keywords": ["bung (chi|duong may|cuc)", "sut (chi|cuc)", "phai mau", "ra mau", "co rut", "xu long",
+                      "hong khoa( keo)?"],
+  "synonyms": {
+    "chat": ["doi", "size", "doi_tra"],
+    "rong": ["doi", "size", "doi_tra"],
+    "co": ["size"],
+    "vua": ["size", "doi"],
+    "form": ["size"],
+    "mac": ["size"],
+    "bung": ["bao_hanh", "loi"],
+    "rach": ["bao_hanh"],
+    "khoa_keo": ["bao_hanh"],
+    "phec": ["khoa_keo", "bao_hanh"],
+    "giat": ["giat", "bao_quan"],
+    "say": ["giat", "bao_quan"],
+    "co_rut": ["say", "bao_hanh"],
+    "vai": ["cong_nghe", "chat_lieu"],
+    "nong": ["airism", "lam_mat"],
+    "nang": ["chong", "uv"]
+  },
+  "storefront": {
+    "page": "/store",
+    "tagline": "Thời trang LifeWear — áo thun AIRism, áo khoác chống UV",
+    "accent": "#1e3a8a"
+  }
+}

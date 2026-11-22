@@ -1,0 +1,23 @@
+{
+  "name": "TEN SHOP",
+  "intro": "TEN SHOP - mô tả ngắn shop bán gì (vd: chuỗi cửa hàng mỹ phẩm chính hãng)",
+  "intent_label": "cửa hàng TEN SHOP",
+  "knowledge_examples": "đổi trả, bảo hành, vận chuyển, thanh toán...",
+  "freeship_threshold": 300000,
+  "size_advice": false,
+  "variant_label": "Phiên bản",
+  "product_keywords": [],
+  "defect_keywords": [],
+  "synonyms": {},
+  "storefront": {
+    "page": "/shop",
+    "tagline": "Khẩu hiệu ngắn của shop",
+    "hero_title": "Tiêu đề lớn trên trang chủ",
+    "hero_subtitle": "Một câu giới thiệu ưu đãi chính.",
+    "accent": "#0f766e",
+    "logo": "🛍️"
+  },
+  "demo_accounts": [
+    {"phone": "0900000001", "name": "Khách Demo", "member_id": "D-0001"}
+  ]
+}

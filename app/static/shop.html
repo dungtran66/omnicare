@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cửa hàng demo</title>
+<style>
+  :root {
+    --accent: #0f766e;
+    --bg: #f7f7f8; --card: #ffffff; --text: #18181b; --muted: #71717a; --line: #e4e4e7;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  button, input, select { font: inherit; }
+  a { color: inherit; }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 16px; }
+
+  /* Header */
+  header { background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 50; }
+  .hd { display: flex; align-items: center; gap: 16px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: .02em; white-space: nowrap; }
+  .brand-mark { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 18px; }
+  .brand small { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); letter-spacing: 0; }
+  .search { flex: 1; max-width: 420px; margin-left: auto; }
+  .search input { width: 100%; border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; background: var(--bg); }
+  .hd-btn { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 8px 14px; cursor: pointer; white-space: nowrap; position: relative; }
+  .hd-btn:hover { border-color: var(--accent); }
+  .badge { position: absolute; top: -6px; right: -6px; background: var(--accent); color: #fff; font-size: 11px; border-radius: 999px; padding: 1px 6px; }
+
+  /* Hero */
+  .hero { margin: 24px auto; border-radius: 18px; padding: 40px 32px; color: #fff; background: linear-gradient(135deg, var(--accent), #18181b); }
+  .hero h1 { margin: 0 0 8px; font-size: clamp(24px, 4vw, 38px); }
+  .hero p { margin: 0 0 18px; opacity: .9; max-width: 560px; }
+  .hero button { background: #fff; color: var(--text); border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 600; cursor: pointer; }
+
+  /* Products */
+  .cats { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
+  .cat { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 14px; cursor: pointer; font-size: 13.5px; }
+  .cat.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 48px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+  .thumb { aspect-ratio: 4/3; display: grid; place-items: center; font-size: 56px; background: color-mix(in srgb, var(--accent) 8%, #fff); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .card-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .card-cat { font-size: 12px; color: var(--muted); }
+  .card-name { font-weight: 600; line-height: 1.35; }
+  .price { font-weight: 700; color: var(--accent); }
+  .price s { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 6px; }
+  .card select { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: var(--card); }
+  .card-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 6px; }
+  .btn { border: 0; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-weight: 600; }
+  .btn-primary { background: var(--accent); color: #fff; flex: 1; }
+  .btn-ghost { background: transparent; border: 1px solid var(--line); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .oos { font-size: 12px; color: #b91c1c; }
+
+  /* Drawer & modal */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; z-index: 90; }
+  .overlay.open { display: block; }
+  .drawer { position: fixed; top: 0; right: 0; height: 100%; width: min(400px, 100%); background: var(--card); z-index: 105; transform: translateX(100%); transition: transform .2s; display: flex; flex-direction: column; }
+  .drawer.open { transform: none; }
+  .drawer-hd { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--line); font-weight: 700; }
+  .drawer-bd { padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .drawer-ft { padding: 16px; border-top: 1px solid var(--line); }
+  .x { border: 0; background: none; font-size: 20px; cursor: pointer; color: var(--muted); }
+  .line-item { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; border-bottom: 1px dashed var(--line); padding-bottom: 8px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .order { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; }
+  .order b { display: block; margin-bottom: 2px; }
+  .modal { position: fixed; inset: 0; display: none; place-items: center; z-index: 110; padding: 16px; }
+  .modal.open { display: grid; }
+  .modal-box { background: var(--card); border-radius: 14px; width: min(380px, 100%); padding: 22px; }
+  .modal-box h3 { margin: 0 0 4px; }
+  .field { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; font-size: 13px; }
+  .field input { border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+  .err { color: #b91c1c; font-size: 12.5px; min-height: 16px; margin-top: 8px; }
+  .demo-acc { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .demo-acc button { border: 1px dashed var(--line); background: var(--bg); border-radius: 999px; padding: 4px 10px; cursor: pointer; font-size: 12.5px; }
+
+  /* Chat */
+  .chat-fab { position: fixed; right: 20px; bottom: 20px; z-index: 100; background: var(--accent); color: #fff; border: 0; border-radius: 999px; padding: 12px 18px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+  .chat { position: fixed; right: 20px; bottom: 76px; z-index: 100; width: min(380px, calc(100% - 32px)); height: min(560px, calc(100vh - 110px)); background: var(--card); border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.2); display: none; flex-direction: column; overflow: hidden; }
+  .chat.open { display: flex; }
+  .chat-hd { background: var(--accent); color: #fff; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+  .chat-hd .x { color: #fff; }
+  .chat-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; background: var(--bg); }
+  .msg { max-width: 85%; padding: 9px 12px; border-radius: 12px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; }
+  .msg.bot { background: var(--card); border: 1px solid var(--line); align-self: flex-start; }
+  .msg.me { background: var(--accent); color: #fff; align-self: flex-end; }
+  .msg.typing { color: var(--muted); font-style: italic; }
+  .chat-prod { align-self: flex-start; display: flex; gap: 8px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 13px; max-width: 85%; }
+  .chat-prod button { margin-left: auto; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding: 8px 10px 0; background: var(--card); }
+  .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; white-space: nowrap; cursor: pointer; }
+  .chat-in { display: flex; gap: 8px; padding: 10px; background: var(--card); border-top: 1px solid var(--line); }
+  .chat-in input { flex: 1; border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; }
+
+  @media (max-width: 900px) { .hd-btn span.lbl { display: none; } }
+  @media (max-width: 640px) {
+    .hd { flex-wrap: wrap; height: auto; padding: 10px 0; gap: 10px; }
+    .search { order: 3; max-width: none; flex-basis: 100%; }
+    .hero { padding: 28px 20px; }
+    .hd-btn span.lbl { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap hd">
+    <div class="brand"><div class="brand-mark" id="logo">🛍️</div><div><span id="brandName">Cửa hàng</span><small id="tagline"></small></div></div>
+    <div class="search"><input id="q" placeholder="Tìm sản phẩm…" oninput="renderProducts()"></div>
+    <button class="hd-btn" onclick="openAccount()">👤 <span class="lbl" id="accLabel">Đăng nhập</span></button>
+    <button class="hd-btn" onclick="openOrders()">📦 <span class="lbl">Đơn hàng</span></button>
+    <button class="hd-btn" onclick="openDrawer('cart')">🛒 <span class="lbl">Giỏ hàng</span><span class="badge" id="cartCount" hidden>0</span></button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1 id="heroTitle">Chào mừng</h1>
+    <p id="heroSub"></p>
+    <button onclick="toggleChat(true)">Hỏi trợ lý AI</button>
+  </section>
+  <div class="cats" id="cats"></div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<div class="overlay" id="overlay" onclick="closeAll()"></div>
+
+<aside class="drawer" id="cart">
+  <div class="drawer-hd">Giỏ hàng <button class="x" onclick="closeAll()">×</button></div>
+  <div class="drawer-bd" id="cartBody"></div>
+  <div class="drawer-ft">
+    <div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:10px"><span>Tạm tính</span><span id="cartTotal">0đ</span></div>
+    <button class="btn btn-primary" style="width:100%" onclick="checkout()">Đặt hàng</button>
+    <div class="err" id="cartErr"></div>
+  </div>
+</aside>
+
+<aside class="drawer" id="orders">
+  <div class="drawer-hd">Đơn hàng của tôi <button class="x" onclick="closeAll()">×</button></div>
+  <div class="drawer-bd" id="ordersBody"></div>
+</aside>
+
+<div class="modal" id="loginModal">
+  <form class="modal-box" onsubmit="login(event)">
+    <h3>Đăng nhập thành viên</h3>
+    <div class="muted">Tài khoản demo, mật khẩu <b>123456</b></div>
+    <div class="demo-acc" id="demoAcc"></div>
+    <label class="field">Số điện thoại<input id="liPhone" autocomplete="username"></label>
+    <label class="field">Mật khẩu<input id="liPass" type="password" autocomplete="current-password"></label>
+    <div class="err" id="liErr"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+      <button type="button" class="btn btn-ghost" onclick="closeAll()">Đóng</button>
+      <button class="btn btn-primary" style="flex:0">Đăng nhập</button>
+    </div>
+  </form>
+</div>
+
+<button class="chat-fab" onclick="toggleChat()">💬 Chat với trợ lý</button>
+<section class="chat" id="chat">
+  <div class="chat-hd"><span id="chatTitle">Trợ lý</span><button class="x" onclick="toggleChat(false)">×</button></div>
+  <div class="chat-msgs" id="msgs"></div>
+  <div class="chips" id="chips"></div>
+  <form class="chat-in" onsubmit="send(event)">
+    <input id="chatInput" placeholder="Nhập câu hỏi…" autocomplete="off">
+    <button class="btn btn-primary" style="flex:0">Gửi</button>
+  </form>
+</section>
+
+<script>
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => Number(n || 0).toLocaleString('vi-VN') + 'đ';
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+let SHOP = null, PRODUCTS = [], CAT = 'Tất cả', CART = [], USER = null, ORDERS = [];
+const key = k => `omnicare_shop_${SHOP.id}_${k}`;
+
+async function init() {
+  const r = await fetch('/api/shop');
+  SHOP = await r.json();
+  PRODUCTS = SHOP.products || [];
+  const sf = SHOP.storefront || {};
+  document.title = `${SHOP.name} — Cửa hàng`;
+  document.documentElement.style.setProperty('--accent', sf.accent || '#0f766e');
+  document.getElementById('brandName').textContent = SHOP.name;
+  document.getElementById('tagline').textContent = sf.tagline || '';
+  document.getElementById('logo').textContent = sf.logo || SHOP.name[0];
+  document.getElementById('heroTitle').textContent = sf.hero_title || SHOP.name;
+  document.getElementById('heroSub').textContent = sf.hero_subtitle || SHOP.intro || '';
+  document.getElementById('chatTitle').textContent = `Trợ lý ${SHOP.name}`;
+  CART = store.get(key('cart'), []);
+  USER = store.get(key('user'), null);
+  if (!store.get(key('guest'), null)) store.set(key('guest'), Math.random().toString(36).slice(2, 6).toUpperCase());
+  renderCats(); renderProducts(); renderCart(); renderUser();
+  renderChips();
+  addMsg('bot', `Chào bạn! Mình là trợ lý AI của ${SHOP.name}. Bạn cần tư vấn sản phẩm, chính sách hay tra cứu đơn hàng?`);
+  if (USER) loadOrders();
+}
+
+/* ---------- Sản phẩm ---------- */
+function renderCats() {
+  const cats = ['Tất cả', ...new Set(PRODUCTS.map(p => p.category).filter(Boolean))];
+  document.getElementById('cats').innerHTML = cats.map(c =>
+    `<button class="cat ${c === CAT ? 'on' : ''}" onclick="CAT=${esc(JSON.stringify(c))};renderCats();renderProducts()">${esc(c)}</button>`).join('');
+}
+function renderProducts() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const list = PRODUCTS.filter(p => (CAT === 'Tất cả' || p.category === CAT) && (!q || (p.name + ' ' + p.category).toLowerCase().includes(q)));
+  const label = SHOP.size_advice ? 'Size' : 'Phiên bản';
+  document.getElementById('grid').innerHTML = list.map(p => {
+    const variants = Object.entries(p.sizes || {});
+    const anyStock = variants.some(([, n]) => n > 0);
+    const opts = variants.map(([v, n]) => `<option value="${esc(v)}" ${n > 0 ? '' : 'disabled'}>${esc(v)}${n > 0 ? '' : ' (hết)'}</option>`).join('');
+    const thumb = p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.replaceWith(document.createTextNode('${esc(p.emoji || '🛍️')}'))">` : esc(p.emoji || '🛍️');
+    return `<article class="card">
+      <div class="thumb">${thumb}</div>
+      <div class="card-body">
+        <div class="card-cat">${esc(p.category || '')}</div>
+        <div class="card-name">${esc(p.name)}</div>
+        <div class="price">${money(p.price)}${p.old_price ? `<s>${money(p.old_price)}</s>` : ''}</div>
+        ${variants.length > 1 || (variants[0] && variants[0][0] !== 'Tiêu chuẩn') ? `<select id="v-${esc(p.id)}" aria-label="${label}">${opts}</select>` : ''}
+        ${anyStock ? '' : '<div class="oos">Tạm hết hàng</div>'}
+        <div class="card-actions">
+          <button class="btn btn-primary" ${anyStock ? '' : 'disabled'} onclick="addToCart('${esc(p.id)}')">Thêm vào giỏ</button>
+          <button class="btn btn-ghost" title="Hỏi trợ lý về sản phẩm này" onclick="askAbout('${esc(p.id)}')">Hỏi AI</button>
+        </div>
+      </div>
+    </article>`;
+  }).join('') || '<div class="muted">Không tìm thấy sản phẩm phù hợp.</div>';
+}
+
+/* ---------- Giỏ hàng & đặt hàng ---------- */
+function addToCart(id) {
+  const p = PRODUCTS.find(x => x.id === id); if (!p) return;
+  const sel = document.getElementById('v-' + id);
+  const variant = sel ? sel.value : (Object.keys(p.sizes || {})[0] || '');
+  const found = CART.find(c => c.id === id && c.variant === variant);
+  if (found) found.qty++; else CART.push({ id, name: p.name, price: p.price, variant, qty: 1 });
+  store.set(key('cart'), CART); renderCart(); openDrawer('cart');
+}
+function renderCart() {
+  const n = CART.reduce((s, c) => s + c.qty, 0);
+  const b = document.getElementById('cartCount'); b.textContent = n; b.hidden = !n;
+  document.getElementById('cartBody').innerHTML = CART.length ? CART.map((c, i) => `
+    <div class="line-item"><div><b>${esc(c.name)}</b><div class="muted">${esc(c.variant)} × ${c.qty}</div></div>
+    <div style="text-align:right">${money(c.price * c.qty)}<br><button class="x" style="font-size:13px" onclick="CART.splice(${i},1);store.set(key('cart'),CART);renderCart()">Xóa</button></div></div>`).join('')
+    : '<div class="muted">Giỏ hàng trống.</div>';
+  document.getElementById('cartTotal').textContent = money(CART.reduce((s, c) => s + c.price * c.qty, 0));
+}
+async function checkout() {
+  const err = document.getElementById('cartErr');
+  if (!CART.length) { err.textContent = 'Giỏ hàng đang trống.'; return; }
+  if (!USER) { err.textContent = 'Vui lòng đăng nhập để đặt hàng.'; openAccount(); return; }
+  err.textContent = '';
+  const product = CART.map(c => `${c.name} (${c.variant}) x${c.qty}`).join(', ').slice(0, 480);
+  const total = CART.reduce((s, c) => s + c.price * c.qty, 0);
+  const r = await fetch('/api/orders/create', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ product, total, customer_name: USER.name, phone: USER.phone }) });
+  if (!r.ok) { err.textContent = 'Không đặt được hàng, vui lòng thử lại.'; return; }
+  const o = await r.json();
+  CART = []; store.set(key('cart'), CART); renderCart();
+  await loadOrders(); openOrders();
+  addMsg('bot', `Đặt hàng thành công! Mã đơn của bạn là ${o.order_id}. Bạn có thể hỏi mình tình trạng đơn bất cứ lúc nào.`);
+}
+
+/* ---------- Tài khoản & đơn hàng ---------- */
+function renderUser() { document.getElementById('accLabel').textContent = USER ? USER.name.split(' ').slice(-1)[0] : 'Đăng nhập'; }
+function openAccount() {
+  if (USER) { if (confirm(`Đăng xuất tài khoản ${USER.name}?`)) { USER = null; ORDERS = []; store.del(key('user')); renderUser(); } return; }
+  document.getElementById('demoAcc').innerHTML = (SHOP.demo_accounts || []).map(a =>
+    `<button type="button" onclick="document.getElementById('liPhone').value='${esc(a.phone)}';document.getElementById('liPass').value='123456'">${esc(a.name)} · ${esc(a.phone)}</button>`).join('');
+  document.getElementById('loginModal').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+}
+function login(ev) {
+  ev.preventDefault();
+  const phone = document.getElementById('liPhone').value.trim();
+  const pass = document.getElementById('liPass').value;
+  const acc = (SHOP.demo_accounts || []).find(a => a.phone === phone);
+  if (!acc || pass !== '123456') { document.getElementById('liErr').textContent = 'Số điện thoại hoặc mật khẩu chưa đúng.'; return; }
+  USER = { phone: acc.phone, name: acc.name, member_id: acc.member_id };
+  store.set(key('user'), USER); renderUser(); closeAll(); loadOrders();
+  addMsg('bot', `Chào ${acc.name}! Bạn đã đăng nhập, giờ mình có thể tra cứu và hỗ trợ đơn hàng của bạn.`);
+}
+async function loadOrders() {
+  if (!USER) return;
+  try { ORDERS = (await (await fetch('/api/shop/orders?phone=' + encodeURIComponent(USER.phone))).json()).orders || []; } catch (e) { ORDERS = []; }
+}
+function openOrders() {
+  const body = document.getElementById('ordersBody');
+  if (!USER) body.innerHTML = '<div class="muted">Đăng nhập để xem đơn hàng của bạn.</div><button class="btn btn-primary" onclick="closeAll();openAccount()">Đăng nhập</button>';
+  else body.innerHTML = ORDERS.length ? ORDERS.map(o => `<div class="order"><b>${esc(o.order_id)} · ${esc(o.status)}</b>${esc(o.product)}<div class="muted">${money(o.total)}${o.tracking ? ' · ' + esc(o.carrier) + ' ' + esc(o.tracking) : ''}</div>
+      <button class="btn btn-ghost" style="margin-top:6px;font-size:12.5px" onclick="closeAll();quickAsk('Đơn ${esc(o.order_id)} của tôi đang ở đâu?')">Hỏi trợ lý về đơn này</button></div>`).join('')
+    : '<div class="muted">Bạn chưa có đơn hàng nào.</div>';
+  openDrawer('orders');
+}
+function openDrawer(id) { closeAll(); document.getElementById(id).classList.add('open'); document.getElementById('overlay').classList.add('open'); }
+function closeAll() { document.querySelectorAll('.drawer.open,.modal.open,.overlay.open').forEach(e => e.classList.remove('open')); document.getElementById('liErr').textContent = ''; }
+
+/* ---------- Chat với OmniCare ---------- */
+function toggleChat(force) {
+  const c = document.getElementById('chat');
+  const open = force === undefined ? !c.classList.contains('open') : force;
+  c.classList.toggle('open', open);
+  if (open) document.getElementById('chatInput').focus();
+}
+function renderChips() {
+  const first = PRODUCTS[0];
+  const chips = ['Chính sách đổi trả thế nào?', 'Phí vận chuyển bao nhiêu?', first ? `${first.name} giá bao nhiêu?` : null, 'Bảo hành ra sao?'].filter(Boolean);
+  document.getElementById('chips').innerHTML = chips.map(c => `<button class="chip" onclick="quickAsk(${esc(JSON.stringify(c))})">${esc(c)}</button>`).join('');
+}
+function addMsg(role, text) {
+  const box = document.getElementById('msgs');
+  const d = document.createElement('div');
+  d.className = 'msg ' + role; d.textContent = text;
+  box.appendChild(d); box.scrollTop = box.scrollHeight;
+  return d;
+}
+function addProducts(list) {
+  const box = document.getElementById('msgs');
+  (list || []).slice(0, 3).forEach(p => {
+    const d = document.createElement('div'); d.className = 'chat-prod';
+    d.innerHTML = `<span style="font-size:22px">${esc(p.emoji || '🛍️')}</span><div><b>${esc(p.name)}</b><div class="muted">${money(p.price)}</div></div><button class="btn btn-ghost" onclick="addToCart('${esc(p.id)}')">+ Giỏ</button>`;
+    box.appendChild(d);
+  });
+  box.scrollTop = box.scrollHeight;
+}
+function customerPayload() {
+  if (USER) return { type: 'member', member_id: USER.member_id, name: USER.name, phone: USER.phone, order_ids: ORDERS.map(o => o.order_id), channel: `Website ${SHOP.name}` };
+  return { type: 'guest', guest_code: store.get(key('guest'), 'XXXX'), channel: `Website ${SHOP.name}` };
+}
+function sessionId() { return USER ? `shop-${SHOP.id}-${USER.member_id}` : `shop-${SHOP.id}-g${store.get(key('guest'), 'x')}`; }
+function askAbout(id) { const p = PRODUCTS.find(x => x.id === id); if (p) quickAsk(`${p.name} giá bao nhiêu, còn hàng không?`); }
+function quickAsk(text) { toggleChat(true); document.getElementById('chatInput').value = text; send(); }
+async function send(ev) {
+  if (ev) ev.preventDefault();
+  const inp = document.getElementById('chatInput');
+  const text = inp.value.trim(); if (!text) return;
+  inp.value = '';
+  addMsg('me', text);
+  const typing = addMsg('bot typing', 'Đang trả lời…');
+  try {
+    const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, session_id: sessionId(), customer: customerPayload() }) });
+    const j = await r.json();
+    typing.remove();
+    addMsg('bot', j.answer || 'Xin lỗi, mình chưa trả lời được câu này.');
+    if (j.status === 'login_required' && !USER) addMsg('bot', 'Bấm "Đăng nhập" ở góc trên để dùng tài khoản demo nhé.');
+    addProducts(j.products);
+  } catch (e) {
+    typing.remove();
+    addMsg('bot', 'Mất kết nối tới máy chủ, bạn thử lại sau nhé.');
+  }
+}
+init();
+</script>
+</body>
+</html>

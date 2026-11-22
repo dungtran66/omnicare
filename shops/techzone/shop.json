@@ -1,0 +1,34 @@
+{
+  "name": "TECHZONE",
+  "intro": "TECHZONE - chuỗi cửa hàng điện thoại, laptop và phụ kiện công nghệ chính hãng",
+  "intent_label": "cửa hàng công nghệ TECHZONE",
+  "knowledge_examples": "đổi trả, bảo hành, vận chuyển, thanh toán, trả góp...",
+  "freeship_threshold": 300000,
+  "size_advice": false,
+  "product_keywords": ["iphone", "galaxy", "samsung", "macbook", "dell", "xps", "laptop", "ipad", "airpods",
+                       "tai nghe", "sony", "sac nhanh", "cu sac", "op lung", "apple watch", "dong ho"],
+  "defect_keywords": ["sap nguon", "khong len man", "man hinh (soc|nhap nhay|chet diem)", "pin (chai|phong)",
+                      "nong may", "treo logo", "loa re", "khong nhan sac"],
+  "synonyms": {
+    "sap": ["bao_hanh", "loi"],
+    "pin": ["bao_hanh", "pin"],
+    "man_hinh": ["bao_hanh", "loi"],
+    "tra_gop": ["tra_gop", "thanh_toan"],
+    "gop": ["tra_gop"],
+    "cu": ["thu_cu", "doi_moi"],
+    "len_doi": ["thu_cu", "doi_moi"],
+    "chinh_hang": ["bao_hanh", "chinh_hang"]
+  },
+  "storefront": {
+    "page": "/shop",
+    "tagline": "Điện thoại, laptop & phụ kiện chính hãng",
+    "hero_title": "Công nghệ chính hãng, trả góp 0%",
+    "hero_subtitle": "Bảo hành 12 tháng, đổi mới 30 ngày, giao nhanh 2 giờ nội thành.",
+    "accent": "#dc2626",
+    "logo": "⚡"
+  },
+  "demo_accounts": [
+    {"phone": "0912345678", "name": "Trần Minh Anh", "member_id": "T-2001"},
+    {"phone": "0987654321", "name": "Lê Quốc Bảo", "member_id": "T-2002"}
+  ]
+}

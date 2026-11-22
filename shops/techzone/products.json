@@ -1,0 +1,10 @@
+[
+  {"id": "t1", "name": "iPhone 15 128GB", "category": "Điện thoại", "price": 19990000, "old_price": 22990000, "sizes": {"128GB": 8, "256GB": 4}, "colors": ["Đen", "Hồng", "Xanh Dương"], "emoji": "📱"},
+  {"id": "t2", "name": "Samsung Galaxy S24 256GB", "category": "Điện thoại", "price": 18490000, "old_price": 20990000, "sizes": {"256GB": 6, "512GB": 0}, "colors": ["Đen", "Tím", "Vàng"], "emoji": "📱"},
+  {"id": "t3", "name": "Laptop Dell XPS 13", "category": "Laptop", "price": 32990000, "old_price": 35990000, "sizes": {"16GB/512GB": 3, "32GB/1TB": 1}, "colors": ["Bạc", "Đen"], "emoji": "💻"},
+  {"id": "t4", "name": "MacBook Air M3 13 inch", "category": "Laptop", "price": 27990000, "old_price": 29990000, "sizes": {"8GB/256GB": 5, "16GB/512GB": 2}, "colors": ["Xám", "Bạc", "Đêm Xanh"], "emoji": "💻"},
+  {"id": "t5", "name": "Tai nghe Sony WH-1000XM5", "category": "Âm thanh", "price": 7490000, "old_price": 8490000, "sizes": {"Tiêu chuẩn": 10}, "colors": ["Đen", "Bạc"], "emoji": "🎧"},
+  {"id": "t6", "name": "AirPods Pro 2 USB-C", "category": "Âm thanh", "price": 5990000, "old_price": 6790000, "sizes": {"Tiêu chuẩn": 0}, "colors": ["Trắng"], "emoji": "🎧"},
+  {"id": "t7", "name": "Củ sạc nhanh GaN 65W", "category": "Phụ kiện", "price": 450000, "old_price": 590000, "sizes": {"Tiêu chuẩn": 40}, "colors": ["Trắng", "Đen"], "emoji": "🔌"},
+  {"id": "t8", "name": "Apple Watch Series 9 GPS 41mm", "category": "Đồng hồ", "price": 9490000, "old_price": 10490000, "sizes": {"41mm": 4, "45mm": 3}, "colors": ["Đen", "Bạc", "Hồng"], "emoji": "⌚"}
+]

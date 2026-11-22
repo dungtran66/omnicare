@@ -1,0 +1,6 @@
+{
+  "OC20001": {"product": "iPhone 15 128GB (Đen)", "status": "Đang giao hàng", "carrier": "GHN", "tracking": "GHN7731022", "eta": "24/11/2026", "total": 19990000, "phone": "0912345678", "address": "12 Lê Lợi, Q1, TP.HCM"},
+  "OC20002": {"product": "Laptop Dell XPS 13 (16GB/512GB - Bạc)", "status": "Đã giao thành công", "carrier": "GHTK", "tracking": "GHTK440918", "eta": "18/11/2026", "total": 32990000, "phone": "0987654321", "address": "8 Kim Mã, Ba Đình, Hà Nội"},
+  "OC20003": {"product": "Tai nghe Sony WH-1000XM5 (Đen)", "status": "Đang xử lý", "carrier": null, "tracking": null, "eta": "26/11/2026", "total": 7490000, "phone": "0912345678", "address": "12 Lê Lợi, Q1, TP.HCM"},
+  "OC20004": {"product": "Củ sạc nhanh GaN 65W (Trắng)", "status": "Đã hủy", "carrier": null, "tracking": null, "eta": null, "total": 450000, "phone": "0987654321", "address": "8 Kim Mã, Ba Đình, Hà Nội"}
+}

@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+*.db
+*.db-*
+backups/
+.hf_static_build/
+.claude/
+.git/
+tests/
+__pycache__/
+.pytest_cache/
+data/admin_users.json

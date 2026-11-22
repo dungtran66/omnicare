@@ -1,0 +1,9 @@
+{
+  "OC10001": {"product": "Áo Phao Siêu Nhẹ Ultra Light Down Jacket (Size L - Đen)", "status": "Đang giao hàng", "carrier": "GHN", "tracking": "GHN8823411", "eta": "12/11/2026", "total": 1470000, "phone": "0912345678", "address": "12 Lê Lợi, Q1, TP.HCM"},
+  "OC10002": {"product": "Áo Sơ Mi Vải Linen Pha Dáng Thoải Mái (Size M - Be)", "status": "Đã giao thành công", "carrier": "GHTK", "tracking": "GHTK551209", "eta": "05/11/2026", "total": 588000, "phone": "0987654321", "address": "8 Kim Mã, Ba Đình, Hà Nội"},
+  "OC10003": {"product": "Áo Polo Vải Dry Pique Thoáng Khí (Size XL - Xanh Navy)", "status": "Đang xử lý", "carrier": null, "tracking": null, "eta": "15/11/2026", "total": 489000, "phone": "0901112233", "address": "45 Nguyễn Huệ, Huế"},
+  "OC10004": {"product": "Kính Mát Chống Tia UV400 Gọng Nhẹ (FreeSize - Đen)", "status": "Đã hủy", "carrier": null, "tracking": null, "eta": null, "total": 391000, "phone": "0933444555", "address": "2 Trần Phú, Đà Nẵng"},
+  "OC10005": {"product": "Áo Khoác Parka Chống UV Bỏ Túi (Size L - Navy)", "status": "Đang giao hàng", "carrier": "GHN", "tracking": "GHN990128", "eta": "14/11/2026", "total": 784000, "phone": "0918222333", "address": "88 Nguyễn Thị Minh Khai, Q3, TP.HCM"},
+  "OC10006": {"product": "Áo Thun AIRism Cotton Dáng Rộng (Size M - Trắng)", "status": "Đã giao thành công", "carrier": "GHTK", "tracking": "GHTK772310", "eta": "10/11/2026", "total": 391000, "phone": "0905666777", "address": "15 Cầu Giấy, Hà Nội"},
+  "OC10007": {"product": "Quần Dài Smart Ankle Co Giãn (Size M - Đen)", "status": "Đang xử lý", "carrier": null, "tracking": null, "eta": "16/11/2026", "total": 784000, "phone": "0977123456", "address": "20 Bạch Đằng, Đà Nẵng"}
+}

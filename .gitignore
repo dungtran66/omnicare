@@ -1,0 +1,11 @@
+__pycache__/
+*.db
+.env
+evals/report.json
+.pytest_cache/
+data/admin_users.json
+# Không đưa lên GitHub: bản sao lưu (có .env cũ), bản build tĩnh, cấu hình máy cá nhân
+backups/
+.hf_static_build/
+.claude/
+*.db-*

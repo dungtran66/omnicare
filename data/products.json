@@ -1,0 +1,153 @@
+[
+  {
+    "id": "p1",
+    "name": "Áo Khoác Parka Chống UV Bỏ Túi (UPF50+)",
+    "category": "UV Protection",
+    "price": 686000,
+    "old_price": 784000,
+    "sizes": {
+      "S": 12,
+      "M": 18,
+      "L": 9,
+      "XL": 5
+    },
+    "colors": [
+      "Xanh Navy",
+      "Trắng",
+      "Đen",
+      "Xanh Nhạt"
+    ],
+    "gender": "unisex"
+  },
+  {
+    "id": "p2",
+    "name": "Áo Thun AIRism Cotton Dáng Rộng Tay Lỡ",
+    "category": "AIRism",
+    "price": 391000,
+    "old_price": 489000,
+    "sizes": {
+      "S": 25,
+      "M": 30,
+      "L": 14,
+      "XL": 8
+    },
+    "colors": [
+      "Trắng",
+      "Đen",
+      "Xanh Navy",
+      "Xám"
+    ],
+    "gender": "nam"
+  },
+  {
+    "id": "p3",
+    "name": "Áo Cardigan Chống UV Vải Mát AIRism",
+    "category": "UV Protection",
+    "price": 588000,
+    "old_price": null,
+    "sizes": {
+      "S": 10,
+      "M": 15,
+      "L": 7,
+      "XL": 0
+    },
+    "colors": [
+      "Trắng Kem",
+      "Xanh Navy",
+      "Hồng Phấn"
+    ],
+    "gender": "nu"
+  },
+  {
+    "id": "p4",
+    "name": "Quần Dài Smart Ankle Co Giãn 2 Chiều",
+    "category": "Quần",
+    "price": 784000,
+    "old_price": 980000,
+    "sizes": {
+      "S": 8,
+      "M": 16,
+      "L": 11,
+      "XL": 4
+    },
+    "colors": [
+      "Đen",
+      "Xám Than",
+      "Be"
+    ],
+    "gender": "unisex"
+  },
+  {
+    "id": "p5",
+    "name": "Áo Sơ Mi Vải Linen Pha Dáng Thoải Mái",
+    "category": "Sơ Mi",
+    "price": 588000,
+    "old_price": null,
+    "sizes": {
+      "S": 9,
+      "M": 12,
+      "L": 6,
+      "XL": 3
+    },
+    "colors": [
+      "Trắng",
+      "Xanh Dương Nhạt",
+      "Vàng Kem"
+    ],
+    "gender": "nu"
+  },
+  {
+    "id": "p6",
+    "name": "Áo Phao Siêu Nhẹ Ultra Light Down Jacket",
+    "category": "Áo Khoác",
+    "price": 1470000,
+    "old_price": 1669000,
+    "sizes": {
+      "S": 4,
+      "M": 7,
+      "L": 5,
+      "XL": 2
+    },
+    "colors": [
+      "Xanh Navy",
+      "Đen",
+      "Xám Đậm"
+    ],
+    "gender": "nam"
+  },
+  {
+    "id": "p7",
+    "name": "Áo Polo Vải Dry Pique Thoáng Khí",
+    "category": "AIRism",
+    "price": 489000,
+    "old_price": null,
+    "sizes": {
+      "S": 14,
+      "M": 20,
+      "L": 12,
+      "XL": 6
+    },
+    "colors": [
+      "Xanh Navy",
+      "Trắng",
+      "Đen"
+    ],
+    "gender": "nu"
+  },
+  {
+    "id": "p8",
+    "name": "Kính Mát Chống Tia UV400 Gọng Nhẹ",
+    "category": "Phụ kiện",
+    "price": 391000,
+    "old_price": 489000,
+    "sizes": {
+      "FreeSize": 22
+    },
+    "colors": [
+      "Đen",
+      "Nâu Đồi Mồi"
+    ],
+    "gender": "unisex",
+    "accessory": true
+  }
+]

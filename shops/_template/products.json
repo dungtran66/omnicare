@@ -1,0 +1,3 @@
+[
+  {"id": "x1", "name": "Tên sản phẩm 1", "category": "Danh mục", "price": 250000, "old_price": 300000, "sizes": {"Tiêu chuẩn": 10}, "colors": ["Mặc định"], "emoji": "🛍️"}
+]
