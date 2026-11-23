@@ -114,13 +114,13 @@ Nếu model lỗi, hết lượt hoặc thiếu khóa, agent tự rơi về Mock
 ## 5. Kiểm thử
 
 ```bash
-pytest tests -q                                                       # 64 unit test, luôn chạy Mock, không tốn API
+pytest tests -q                                                       # 65 unit test, luôn chạy Mock, không tốn API
 python -m evals.run_evals --threshold 0.95                            # 62 tình huống, chấm bằng luật (cổng CI)
 python -m evals.run_evals --judge llm --delay 2                       # như trên nhưng GPT trả lời và GPT chấm
 python -m evals.run_evals --dataset evals/dataset_gpt.jsonl --judge llm   # 12 tình huống tính năng GPT (đọc ảnh, tự gọi công cụ…)
 ```
 
-Kết quả gần nhất (23/11/2026): 64/64 unit test, 62/62 tình huống Mock đạt. GPT chấm trung bình 4.36/5, nhưng lượt đó API quá tải
+Kết quả gần nhất (23/11/2026): 65/65 unit test, 62/62 tình huống Mock đạt. GPT chấm trung bình 4.36/5, nhưng lượt đó API quá tải
 nên chỉ khoảng 21% câu do GPT trả lời; cần chạy lại khi API ổn định. Chi tiết ở `docs/ARCHITECTURE.md` mục 6.
 
 GitHub Actions (`.github/workflows/evals.yml`) chạy unit test và 62 tình huống Mock ở mỗi lần push.

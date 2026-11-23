@@ -996,6 +996,9 @@ class OmniCareAgent:
                         if from_memory:
                             answer = f"Mình nhớ lần trước bạn cho biết cao {h}cm, nặng {w}kg nhé. " + answer
                         self._remember(sess, body={"height": h, "weight": w, "size": sz, "chart": r.get("chart", "nam")})
+                        if not gender and r.get("chart"):
+                            other = "nữ" if r["chart"] == "nam" else "nam"
+                            answer += f" Nếu bạn là {other}, nhắn mình để tính lại theo bảng size {other} nhé."
                         if r.get("between_sizes"):
                             answer += (f" Chiều cao của bạn ứng với size {r['size_by_height']} còn cân nặng ứng với size "
                                        f"{r['size_by_weight']}, nên mình chọn size lớn hơn để mặc thoải mái.")

@@ -164,7 +164,7 @@ python -m evals.run_evals --dataset evals/dataset_gpt.jsonl --judge llm --out ev
 
 | Lượt chạy | Kết quả |
 |---|---|
-| Unit test (`pytest tests`) | **64/64** đạt |
+| Unit test (`pytest tests`) | **65/65** đạt |
 | 62 case chính, Mock (cổng CI) | **62/62** đạt: intent, công cụ, nguồn RAG, an toàn đều 100% |
 | 62 case chính, GPT chấm | Điểm giám khảo trung bình **4.36/5** (faithfulness 3.94 · relevance 4.26 · tone/safety 4.89); an toàn 100%. Lưu ý: lượt này proxy quá tải nên chỉ 21% câu do GPT trả lời, còn lại là luật/Mock; cần chạy lại khi API ổn định |
 | 12 case tính năng GPT | Chưa có số đáng tin: proxy giới hạn 4 yêu cầu cùng lúc cho mỗi tài khoản, phần lớn lượt bị từ chối (429) nên rơi về Mock |
