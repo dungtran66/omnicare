@@ -228,7 +228,7 @@ def rule_intent(text: str) -> str:
     t = normalize(text)
     if re.search(r"\b(nhan vien|nguoi that|tong dai vien|gap (nguoi|quan ly)|noi chuyen voi nguoi)\b", t):
         return "handoff"
-    if re.search(r"\b(huy don|muon huy|huy giup)\b", t):
+    if re.search(r"\b(huy don|muon huy|huy giup|huy luon|huy (dum|ho|di))\b", t):
         return "cancel_order"
     if re.search(r"\b(doi dia chi|thay doi dia chi|giao sang dia chi)\b", t):
         return "update_address"
@@ -430,6 +430,11 @@ class OmniCareAgent:
         except (LLMError, ValueError) as exc:
             flags.append("llm_fallback")
             base.update(source="rule", vision_error=str(exc)[:200])
+            # Ảnh thật mà model không đọc được (quá tải, lỗi mạng): KHÔNG đoán nội dung ảnh.
+            # Khách có mô tả lỗi thì vẫn ghi nhận theo lời khách; không thì nhờ gửi lại/mô tả (không bắt đăng nhập).
+            base["finding"] = "AI chưa xem được ảnh lúc này, ghi nhận theo mô tả của khách"
+            if not DEFECT_RE.search(normalize(text)):
+                base["kind"] = "unreadable"
             return base
         trace.add_usage(res.prompt_tokens, res.completion_tokens)
         note_llm(trace, res.model or self.llm.name, "xem ảnh")
@@ -723,6 +728,7 @@ class OmniCareAgent:
         calls: list[dict[str, Any]] = []
         citations: list[dict[str, Any]] = []
         matched_products: list[dict[str, Any]] = []
+        grounded_extra: list[str] = []  # số liệu do code tính (vd tổng tiền bộ phối đồ): là căn cứ hợp lệ cho guardrail đầu ra
         intent, status, answer = "unknown", "ok", ""
         vision_result: dict[str, Any] | None = None
 
@@ -737,10 +743,14 @@ class OmniCareAgent:
                 "image_url": image_info.get("image_url") if image_info else None,
                 "at": int(now * 1000),
             })
+            ack = "👩‍💼 Nhân viên CSKH đang trực tiếp phụ trách phiên chat này và đã nhận được tin nhắn của bạn."
+            sess["messages"].append({"role": "agent", "text": ack, "intent": "handoff", "status": "human_active",
+                                     "at": int(now * 1000) + 1})
+            sess["messages"] = sess["messages"][-60:]
             self.store.save_conversation(session_id, sess)
             self.tools.last_image_url = None
             return AgentResponse(
-                answer="👩‍💼 Nhân viên CSKH đang trực tiếp phụ trách phiên chat này và đã nhận được tin nhắn của bạn.",
+                answer=ack,
                 trace_id=trace.trace_id,
                 intent="handoff",
                 status="human_active",
@@ -791,7 +801,11 @@ class OmniCareAgent:
                 oid = vision_result["detected_order_id"]
                 kind = vision_result["kind"]
                 defect_kind = kind in ("apparel_defect", "product_damage", "invoice")
-                if kind == "fashion_item" and (wants_search or not wants_defect) or wants_search and not defect_kind:
+                if kind == "unreadable":
+                    intent, status = "image_search", "clarify"
+                    answer = ("Xin lỗi, mình chưa xem được ảnh lúc này. Bạn gửi lại sau ít phút, hoặc mô tả giúp mình "
+                              "kiểu dáng, màu sắc món bạn đang tìm (hay lỗi sản phẩm bạn gặp) nhé.")
+                elif kind == "fashion_item" and (wants_search or not wants_defect) or wants_search and not defect_kind:
                     intent = "image_search"
                     answer = self._image_search_answer(vision_result, matched_products)
                 elif defect_kind and (self._access_check(trace, sess, "vision_defect", text) is not None):
@@ -808,7 +822,10 @@ class OmniCareAgent:
                         "category": vision_result["suggested_category"],
                         "order_id": oid,
                     }, calls)
-                    answer = (f"📸 Mình đã xem ảnh bạn gửi: {vision_result['finding'].rstrip('. ')}.{sev} "
+                    seen_txt = (f"📸 Mình đã xem ảnh bạn gửi: {vision_result['finding'].rstrip('. ')}.{sev} "
+                                if not vision_result.get("vision_error") else
+                                "📸 Mình đã nhận ảnh và ghi nhận lỗi theo mô tả của bạn (nhân viên sẽ xem ảnh trực tiếp). ")
+                    answer = (seen_txt +
                               f"Mình đã tạo phiếu hỗ trợ {tk['ticket_id']} cho đơn {oid} (phụ trách: {tk.get('assignee', 'CSKH')}, "
                               f"xử lý trong {tk['sla_hours']} giờ).")
 
@@ -887,6 +904,7 @@ class OmniCareAgent:
                         flags.append("price_mismatch")
                         answer = "Mình gợi ý bạn bộ này nè: " + ", ".join(
                             f"{p['name']} ({vnd(p['price'])})" for p in fit["items"]) + "."
+                    grounded_extra += [json.dumps(fit["items"], ensure_ascii=False), vnd(fit["total"])]
                     if len(fit["items"]) > 1:
                         free = fit["total"] >= active_shop().freeship_threshold
                         answer += f" Cả bộ {vnd(fit['total'])}" + (", được miễn phí giao hàng luôn." if free else ".")
@@ -1092,7 +1110,7 @@ class OmniCareAgent:
             if status not in ("clarify", "fallback", "confirm", "login_required", "denied") and intent not in ("greeting", "vision_defect", "cart_inquiry", "image_search"):
                 with trace.span("guardrail:output") as s:
                     ctx_texts = [d["text"] for d in context["documents"]] + \
-                                [json.dumps(t["result"], ensure_ascii=False) for t in context["tool_results"]]
+                                [json.dumps(t["result"], ensure_ascii=False) for t in context["tool_results"]] + grounded_extra
                     gout = guardrails.check_output(answer, ctx_texts)
                     flags += gout.flags
                     s.attributes.update(action=gout.action, flags=gout.flags)

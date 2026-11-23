@@ -18,6 +18,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run Unit Tests (pytest)
-        run: pytest tests/test_omnicare.py -q
-      - name: Run Evals Suite + LLM-as-a-Judge Gate (>= 95%)
-        run: python -m evals.run_evals --threshold 0.95
+        run: pytest tests -q
+      - name: Run Evals Suite (62 case, Mock) - gate >= 95%
+        run: LLM_PROVIDER=mock EMBEDDING_MODEL= python -m evals.run_evals --threshold 0.95

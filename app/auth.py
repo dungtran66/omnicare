@@ -36,7 +36,7 @@ _fails: dict[str, list[float]] = {}
 # API chỉ dành cho nhân viên (method, regex đường dẫn). Các API khách dùng (chat, đặt hàng, webhook...) để mở.
 PROTECTED = [
     ("GET", r"^/api/(omnichannel/)?conversations/?$"),
-    ("POST", r"^/api/conversations/[^/]+/(reply|takeover|qa)$"),
+    ("POST", r"^/api/conversations/[^/]+/(reply|takeover|qa|close)$"),
     ("GET", r"^/api/customers/?$"),
     ("POST", r"^/api/llm/config$"),
     ("POST", r"^/api/kb/(upload|reload)$"),

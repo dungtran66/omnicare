@@ -85,9 +85,12 @@ def _check_rate_limit(key: str) -> None:
     _RATE_BUCKET[key] = hits
 
 
+SID_PATTERN = r"^[A-Za-z0-9_.:-]{1,120}$"  # mã phiên chỉ gồm chữ/số/_.:- (được chèn vào HTML/onclick ở Admin)
+
+
 class ChatRequest(BaseModel):
     message: str = Field(default="", max_length=4000)
-    session_id: str | None = None
+    session_id: str | None = Field(default=None, pattern=SID_PATTERN)
     image_info: dict[str, Any] | None = None
     # {"type": "guest"|"member", "guest_code"?, "member_id"?, "name"?, "phone"?, "order_ids"?: [...]}
     customer: dict[str, Any] | None = None
@@ -103,12 +106,22 @@ class LLMConfigRequest(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    trace_id: str
+    trace_id: str = Field(..., max_length=200)
     score: int = Field(..., ge=-1, le=1)
+    stars: int | None = Field(default=None, ge=1, le=5)  # CSAT 1-5 sao khi kết thúc hội thoại
+
+
+class OrderItem(BaseModel):
+    id: str = Field(..., max_length=40)
+    size: str = Field(default="", max_length=20)
+    qty: int = Field(default=1, ge=1, le=50)
 
 
 class CreateOrderRequest(BaseModel):
-    product: str = Field(..., max_length=500)
+    # items: server tự tính tiền theo danh mục (không tin số tiền trình duyệt gửi lên).
+    # product/subtotal/total chỉ dùng cho kênh cũ không gửi items.
+    items: list[OrderItem] | None = Field(default=None, max_length=30)
+    product: str = Field(default="", max_length=500)
     total: int = Field(default=500000, ge=0)
     subtotal: int | None = Field(default=None, ge=0)  # tiền hàng; có thì server tự cộng phí ship
     customer_name: str = Field(default="Khách hàng NORIVA", max_length=200)
@@ -131,7 +144,7 @@ class TicketUpdateRequest(BaseModel):
 
 
 class WebhookPayload(BaseModel):
-    sender_id: str = Field(..., max_length=100)
+    sender_id: str = Field(..., max_length=100, pattern=r"^[A-Za-z0-9_.:-]{1,100}$")
     sender_name: str | None = Field(default=None, max_length=100)
     text: str = Field(..., max_length=4000)
 
@@ -154,18 +167,17 @@ class ApproveGapRequest(BaseModel):
 
 class IntegrationsConfigRequest(BaseModel):
     telegram_bot_token: str | None = None
-    chatwoot_url: str | None = None
-    chatwoot_api_token: str | None = None
 
 
 _WS_CLIENTS: list[WebSocket] = []
+# WebSocket -> session_id của khách đang nghe (None = Admin đã đăng nhập, nhận mọi hội thoại).
+# Khách chỉ nhận sự kiện của chính phiên mình, không bao giờ nhận danh sách hội thoại của người khác.
+_WS_SID: dict[int, str | None] = {}
 _OMNI_SESSIONS: dict[str, dict[str, Any]] = {}
 _LLM_CFG: dict[str, str] = {"provider": config.LLM_PROVIDER, "base_url": config.LLM_BASE_URL, "model": config.LLM_MODEL}
 _INTEGRATIONS_CFG: dict[str, Any] = {
     "telegram_bot_token": os.getenv("TELEGRAM_BOT_TOKEN", ""),
     "telegram_last_update_id": 0,
-    "chatwoot_url": os.getenv("CHATWOOT_URL", "https://app.chatwoot.com"),
-    "chatwoot_api_token": os.getenv("CHATWOOT_API_TOKEN", ""),  # access token của Agent Bot trong Chatwoot
 }
 
 
@@ -184,7 +196,11 @@ async def _broadcast_ws(payload: dict[str, Any]) -> None:
     if "conversations" in payload:
         payload = {**payload, "conversations": [_public_conv(c) for c in payload["conversations"]]}
     stale: list[WebSocket] = []
+    target = payload.get("session_id") or (payload.get("conversation") or {}).get("id")
     for ws in list(_WS_CLIENTS):
+        sid = _WS_SID.get(id(ws))
+        if sid is not None and (sid != target or "conversations" in payload):
+            continue  # kết nối của khách: chỉ gửi sự kiện thuộc phiên của họ
         try:
             await ws.send_json(payload)
         except Exception:
@@ -192,6 +208,7 @@ async def _broadcast_ws(payload: dict[str, Any]) -> None:
     for ws in stale:
         if ws in _WS_CLIENTS:
             _WS_CLIENTS.remove(ws)
+        _WS_SID.pop(id(ws), None)
 
 
 def _send_telegram_message(chat_id: str | int, text: str) -> bool:
@@ -204,35 +221,6 @@ def _send_telegram_message(chat_id: str | int, text: str) -> bool:
     try:
         with urllib.request.urlopen(req, timeout=8.0) as resp:
             return resp.status == 200
-    except Exception:
-        return False
-
-
-def _send_chatwoot_message(account_id: Any, conv_id: Any, text: str, handoff: bool = False) -> bool:
-    base = (_INTEGRATIONS_CFG.get("chatwoot_url") or "").rstrip("/")
-    token = (_INTEGRATIONS_CFG.get("chatwoot_api_token") or "").strip()
-    if not base or not token or not account_id or not conv_id:
-        return False
-    headers = {"Content-Type": "application/json", "api_access_token": token}
-    try:
-        msg_url = f"{base}/api/v1/accounts/{account_id}/conversations/{conv_id}/messages"
-        req = urllib.request.Request(
-            msg_url,
-            data=json.dumps({"content": text, "message_type": "outgoing"}).encode("utf-8"),
-            headers=headers,
-            method="POST",
-        )
-        urllib.request.urlopen(req, timeout=8.0).close()
-        if handoff:
-            st_url = f"{base}/api/v1/accounts/{account_id}/conversations/{conv_id}/toggle_status"
-            sreq = urllib.request.Request(
-                st_url,
-                data=json.dumps({"status": "open"}).encode("utf-8"),
-                headers=headers,
-                method="POST",
-            )
-            urllib.request.urlopen(sreq, timeout=8.0).close()
-        return True
     except Exception:
         return False
 
@@ -386,8 +374,8 @@ def _schedule_handoff_summary(sid: str, res) -> None:
     def work() -> None:
         sess = agent._session(sid)
         s = ai_features.summarize_handoff(agent.llm, sess.get("messages", []), sess.get("customer"))
-        if not s:
-            return
+        if not s or agent.sessions.get(sid) is not sess:
+            return  # nhân viên đã đóng (xóa) hội thoại trong lúc model đang tóm tắt: không ghi lại
         sess["handoff_summary"] = s
         agent.store.save_conversation(sid, sess)
         # Chỉ báo "có tóm tắt mới"; Admin tự tải lại qua /api/conversations (cần token)
@@ -467,12 +455,24 @@ def list_omnichannel_conversations() -> list[dict[str, Any]]:
     return _all_conversations()
 
 
+@app.post("/api/conversations/{session_id}/close")
+async def close_conversation(session_id: str) -> dict[str, Any]:
+    """Nhân viên đóng hội thoại: XÓA hội thoại (bộ nhớ + SQLite) và báo cho trang khách qua WebSocket.
+    Trace (Observability) và trí nhớ thành viên vẫn giữ. Khách nhắn tiếp sẽ là một hội thoại mới."""
+    existed = bool(agent.sessions.pop(session_id, None)) | bool(_OMNI_SESSIONS.pop(session_id, None))
+    existed = existed or session_id in agent.store.load_conversations()
+    closed_at = agent.store.delete_conversation(session_id)  # mốc đóng lưu trong SQLite, khởi động lại không mất
+    await _broadcast_ws({"event": "conversation_closed", "session_id": session_id, "closed_at": closed_at})
+    return {"ok": True, "session_id": session_id, "deleted": existed, "closed_at": closed_at}
+
+
 @app.get("/api/conversations/{session_id}")
 def get_conversation_detail(session_id: str) -> dict[str, Any]:
     sess = agent.sessions.get(session_id) or agent.store.load_conversations().get(session_id)
+    closed_at = agent.store.closed_at(session_id)
     if not sess:
-        return {"id": session_id, "messages": [], "takeover": False}
-    return _public_conv(sess)
+        return {"id": session_id, "messages": [], "takeover": False, "closed_at": closed_at}
+    return {**_public_conv(sess), "closed_at": closed_at}
 
 
 @app.post("/api/conversations/{session_id}/reply")
@@ -496,9 +496,6 @@ async def human_reply_conversation(session_id: str, req: HumanReplyRequest) -> d
     agent.store.save_conversation(session_id, sess)
     if session_id.startswith("telegram-"):
         _send_telegram_message(session_id.replace("telegram-", "", 1), f"👩‍💼 {req.agent_name}: {req.text.strip()}")
-    elif session_id.startswith("chatwoot-"):
-        cw_meta = (sess.get("customer") or {})
-        _send_chatwoot_message(cw_meta.get("account_id"), cw_meta.get("conv_id"), req.text.strip())
     await _broadcast_ws({"event": "human_reply", "session_id": session_id, "message": msg, "conversation": sess})
     return {"ok": True, "session_id": session_id, "takeover": sess["takeover"], "message": msg, "conversation": sess}
 
@@ -615,18 +612,14 @@ def approve_kb_gap(req: ApproveGapRequest) -> dict[str, Any]:
     }
 
 
-# ---------------- Feature 5: Telegram Bot & Chatwoot Agent Bot Bridge ----------------
+# ---------------- Feature 5: Telegram Bot ----------------
 @app.get("/api/integrations/config")
 def get_integrations_config() -> dict[str, Any]:
     tok = _INTEGRATIONS_CFG.get("telegram_bot_token") or ""
-    cw_tok = _INTEGRATIONS_CFG.get("chatwoot_api_token") or ""
     return {
         "telegram_configured": bool(tok),
         "telegram_token_masked": (tok[:8] + "..." + tok[-4:]) if len(tok) > 12 else ("Đã cấu hình" if tok else ""),
-        "chatwoot_url": _INTEGRATIONS_CFG.get("chatwoot_url") or "https://app.chatwoot.com",
-        "chatwoot_configured": bool(cw_tok),
         "webhooks": {
-            "chatwoot_agent_bot": "/api/integrations/chatwoot",
             "telegram_webhook": "/api/integrations/telegram/webhook",
             "facebook_webhook": "/api/webhook/facebook",
             "zalo_webhook": "/api/webhook/zalo",
@@ -638,94 +631,7 @@ def get_integrations_config() -> dict[str, Any]:
 def save_integrations_config(req: IntegrationsConfigRequest) -> dict[str, Any]:
     if req.telegram_bot_token is not None:
         _INTEGRATIONS_CFG["telegram_bot_token"] = req.telegram_bot_token.strip()
-    if req.chatwoot_url is not None:
-        _INTEGRATIONS_CFG["chatwoot_url"] = req.chatwoot_url.strip() or "https://app.chatwoot.com"
-    if req.chatwoot_api_token is not None:
-        _INTEGRATIONS_CFG["chatwoot_api_token"] = req.chatwoot_api_token.strip()
     return {"ok": True, **get_integrations_config()}
-
-
-@app.post("/api/integrations/chatwoot")
-async def chatwoot_agent_bot_webhook(payload: dict[str, Any]) -> dict[str, Any]:
-    """Chuẩn Chatwoot Agent Bot Webhook (nhận event message_created từ Chatwoot).
-
-    Quy tắc phối hợp với nhân viên trong Chatwoot:
-      * conversation_status_changed: open -> nhân viên đang xử lý (AI im lặng); pending/resolved -> trả lại cho AI.
-      * message_created khi hội thoại đã được gán cho nhân viên hoặc status = open -> AI không trả lời.
-    """
-    event = payload.get("event", "message_created")
-    if event == "conversation_status_changed":
-        cid = payload.get("id") or (payload.get("conversation") or {}).get("id")
-        st = payload.get("status") or (payload.get("conversation") or {}).get("status")
-        sid_s = f"chatwoot-{cid}"
-        sess_s = agent._session(sid_s)
-        sess_s["takeover"] = st == "open"
-        sess_s["channel"] = "Chatwoot"
-        agent.store.save_conversation(sid_s, sess_s)
-        await _broadcast_ws({"event": "takeover_changed", "session_id": sid_s, "takeover": sess_s["takeover"], "conversation": sess_s})
-        return {"ok": True, "session_id": sid_s, "chatwoot_status": st, "takeover": sess_s["takeover"]}
-    msg_type = payload.get("message_type", "incoming")
-    if event != "message_created" or msg_type not in ("incoming", 0, "0") or payload.get("private"):
-        return {"ignored": True, "reason": "chỉ xử lý incoming message_created"}
-
-    conv = payload.get("conversation") or {}
-    conv_id = conv.get("id") or payload.get("id") or "101"
-    assignee = (conv.get("meta") or {}).get("assignee") or conv.get("assignee_id")
-    if conv.get("status") == "open" or assignee:
-        # Nhân viên Chatwoot đang phụ trách -> chỉ ghi nhận, không để AI trả lời đè
-        sid_h = f"chatwoot-{conv_id}"
-        sess_h = agent._session(sid_h)
-        sess_h["takeover"] = True
-        sess_h["channel"] = "Chatwoot"
-        sess_h["messages"].append({"role": "visitor", "text": (payload.get("content") or "").strip(), "at": int(time.time() * 1000)})
-        agent.store.save_conversation(sid_h, sess_h)
-        await _broadcast_ws({"event": "conversation_updated", "session_id": sid_h, "conversation": sess_h})
-        return {"ok": True, "ignored": True, "reason": "human_agent_active", "session_id": sid_h}
-    account = payload.get("account") or {}
-    account_id = account.get("id") or "1"
-    sender = payload.get("sender") or (conv.get("meta") or {}).get("sender") or {}
-    sender_name = sender.get("name") or f"Khách Chatwoot #{conv_id}"
-    content = (payload.get("content") or "").strip()
-    attachments = payload.get("attachments") or []
-    img_info = None
-    if attachments:
-        att = attachments[0]
-        img_info = {"name": att.get("data_url", "chatwoot_image.jpg").split("/")[-1], "image_url": att.get("data_url")}
-
-    sid = f"chatwoot-{conv_id}"
-    _check_rate_limit(sid)
-    res = agent.handle(
-        sid,
-        content,
-        image_info=img_info,
-        customer={
-            "type": "member" if sender.get("phone_number") else "guest",
-            "name": sender_name,
-            "phone": sender.get("phone_number"),
-            "channel": "Chatwoot",
-            "account_id": account_id,
-            "conv_id": conv_id,
-        },
-    )
-    sess = agent._session(sid)
-    sess["name"] = sender_name
-    sess["channel"] = "Chatwoot"
-    agent.store.save_conversation(sid, sess)
-    _OMNI_SESSIONS[sid] = sess
-    sent_to_cw = _send_chatwoot_message(account_id, conv_id, res.answer, handoff=(res.status == "handoff"))
-    await _broadcast_ws({"event": "conversation_updated", "session_id": sid, "conversation": sess})
-    return {
-        "ok": True,
-        "bridge": "chatwoot_agent_bot",
-        "session_id": sid,
-        "conversation_id": conv_id,
-        "reply": res.answer,
-        "status": res.status,
-        "intent": res.intent,
-        "trace_id": res.trace_id,
-        "chatwoot_action": "toggle_status_open" if res.status == "handoff" else "reply_outgoing",
-        "pushed_to_chatwoot_api": sent_to_cw,
-    }
 
 
 @app.post("/api/integrations/telegram/webhook")
@@ -794,12 +700,22 @@ async def telegram_poll_updates() -> dict[str, Any]:
 
 
 @app.websocket("/ws/crm")
-async def ws_crm(ws: WebSocket) -> None:
+async def ws_crm(ws: WebSocket, token: str | None = None, sid: str | None = None) -> None:
+    """Admin: ?token=<token đăng nhập> → nhận mọi hội thoại. Trang bán hàng: ?sid=<session_id> → chỉ phiên đó."""
+    is_admin = (not auth.ENABLED) or auth.session(token) is not None
+    if not is_admin and not sid:
+        await ws.close(code=4401)
+        return
     await ws.accept()
     _WS_CLIENTS.append(ws)
+    _WS_SID[id(ws)] = None if is_admin else sid
     try:
-        await ws.send_json({"event": "connected", "active_model": agent.llm.name,
-                            "conversations": _all_conversations()})
+        if is_admin:
+            await ws.send_json({"event": "connected", "active_model": agent.llm.name,
+                                "conversations": [_public_conv(c) for c in _all_conversations()]})
+        else:
+            own = agent.sessions.get(sid) or agent.store.load_conversations().get(sid)
+            await ws.send_json({"event": "connected", "session_id": sid, "conversation": _public_conv(own) if own else None})
         while True:
             data = await ws.receive_json()
             if data.get("type") == "ping":
@@ -809,10 +725,14 @@ async def ws_crm(ws: WebSocket) -> None:
     finally:
         if ws in _WS_CLIENTS:
             _WS_CLIENTS.remove(ws)
+        _WS_SID.pop(id(ws), None)
 
 
 @app.post("/api/feedback")
 def feedback(req: FeedbackRequest) -> dict[str, Any]:
+    if req.trace_id.startswith("csat-"):  # khách chấm sao cuối hội thoại (không gắn với 1 trace)
+        agent.store.save_csat(req.trace_id[5:], req.stars or (5 if req.score > 0 else 2))
+        return {"ok": True}
     if not agent.store.set_feedback(req.trace_id, req.score):
         raise HTTPException(404, "trace không tồn tại")
     return {"ok": True}
@@ -946,11 +866,26 @@ def create_order(req: CreateOrderRequest) -> dict[str, Any]:
     while f"OC{next_num}" in agent.tools.orders:
         next_num += 1
     oid = f"OC{next_num}"
-    subtotal = req.subtotal if req.subtotal is not None else req.total
+    product_text = req.product
+    if req.items:
+        by_id = {p["id"]: p for p in agent.tools.products}
+        parts, subtotal = [], 0
+        for it in req.items:
+            p = by_id.get(it.id)
+            if not p:
+                raise HTTPException(400, f"Sản phẩm {it.id} không có trong danh mục")
+            subtotal += int(p["price"]) * it.qty
+            size = "" if agent.tools.is_free_size(p) or not it.size else f" ({active_shop().variant_label} {it.size})"
+            parts.append(f"{p['name']}{size}" + (f" x{it.qty}" if it.qty > 1 else ""))
+        product_text = ", ".join(parts)
+    else:
+        if not product_text:
+            raise HTTPException(400, "Thiếu sản phẩm")
+        subtotal = req.subtotal if req.subtotal is not None else req.total
     fee = shipping_fee(subtotal)
     now = time.time()
     order_data = {
-        "product": req.product,
+        "product": product_text,
         "status": "Đang chuẩn bị hàng",
         "carrier": "GHN",
         "tracking": f"GHN{next_num}99",

@@ -322,7 +322,7 @@ def weekly_report(llm, stats: dict[str, Any]) -> dict[str, Any]:
             md = ""
     ai = bool(md)
     if not md:
-        lines = [f"## Tổng quan", f"- {stats['total']} tin nhắn trong {stats['days']} ngày, AI tự xử lý {stats['ai_resolved_pct']}%.",
+        lines = ["## Tổng quan", f"- {stats['total']} tin nhắn trong {stats['days']} ngày, AI tự xử lý {stats['ai_resolved_pct']}%.",
                  f"- Chuyển nhân viên {stats['handoff']} lần, chưa trả lời được {stats['fallback']} lần.", "",
                  "## Khách hỏi gì nhiều nhất"] + [f"- {k}: {v}" for k, v in stats["top_intents"][:5]]
         if stats["unanswered_samples"]:

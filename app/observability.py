@@ -11,7 +11,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import config
 
 logger = logging.getLogger("omnicare")
 if not logger.handlers:
@@ -111,12 +110,22 @@ def set_active_model(name: str) -> None:
     _ACTIVE_MODEL["name"] = name or ""
 
 
-def _price_per_mtok() -> tuple[float, float]:
-    name = _ACTIVE_MODEL["name"]
+def _price_per_mtok(name: str | None = None) -> tuple[float, float, str]:
+    """Giá (input, output) USD / 1 triệu token + nguồn giá.
+    Ưu tiên LLM_PRICE_INPUT / LLM_PRICE_OUTPUT trong .env (proxy/model không có trong bảng, vd GPT qua codex.fosta.app)."""
+    import os
+
+    pin, pout = os.getenv("LLM_PRICE_INPUT"), os.getenv("LLM_PRICE_OUTPUT")
+    if pin and pout:
+        try:
+            return float(pin), float(pout), "env"
+        except ValueError:
+            pass
+    name = name or _ACTIVE_MODEL["name"]
     for model_id, price in _PRICES.items():
         if model_id in name:
-            return price
-    return (0.15, 0.60)  # mặc định cũ (gpt-4o-mini)
+            return price[0], price[1], "bảng giá"
+    return 0.15, 0.60, "mặc định"  # chưa biết giá model này: ước tính, nên đặt LLM_PRICE_* cho đúng
 
 
 class TraceStore:
@@ -146,6 +155,14 @@ class TraceStore:
             c.execute(
                 """CREATE TABLE IF NOT EXISTS customer_memory (
                     member_id TEXT PRIMARY KEY, data TEXT, updated_at REAL)"""
+            )
+            c.execute(  # khách chấm sao (CSAT) khi nhân viên kết thúc hội thoại
+                """CREATE TABLE IF NOT EXISTS csat (
+                    session_id TEXT PRIMARY KEY, stars INTEGER, created_at REAL)"""
+            )
+            c.execute(  # hội thoại nhân viên đã đóng: trang khách dựa vào mốc này để mở hội thoại mới
+                """CREATE TABLE IF NOT EXISTS closed_conversations (
+                    session_id TEXT PRIMARY KEY, closed_at REAL)"""
             )
             c.execute(
                 """CREATE TABLE IF NOT EXISTS customers (
@@ -180,6 +197,10 @@ class TraceStore:
         log_event("trace", trace_id=trace.trace_id, status=status, intent=intent,
                   latency_ms=trace.latency_ms, flags=flags)
 
+    def save_csat(self, session_id: str, stars: int) -> None:
+        with self._lock, self._conn() as c:
+            c.execute("INSERT OR REPLACE INTO csat VALUES (?, ?, ?)", (session_id, stars, time.time()))
+
     def set_feedback(self, trace_id: str, score: int) -> bool:
         with self._lock, self._conn() as c:
             cur = c.execute("UPDATE traces SET feedback=? WHERE trace_id=?", (score, trace_id))
@@ -200,10 +221,16 @@ class TraceStore:
     def get(self, trace_id: str) -> dict[str, Any] | None:
         return next((t for t in self.list(10_000) if t["trace_id"] == trace_id), None)
 
+    def _csat_summary(self) -> dict[str, Any]:
+        with self._conn() as c:
+            stars = [r[0] for r in c.execute("SELECT stars FROM csat").fetchall()]
+        return {"count": len(stars), "avg_stars": round(sum(stars) / len(stars), 2) if stars else None,
+                "satisfied_rate": round(sum(1 for s in stars if s >= 4) / len(stars), 3) if stars else None}
+
     def metrics(self) -> dict[str, Any]:
         with self._conn() as c:
             rows = c.execute(
-                "SELECT status, intent, latency_ms, prompt_tokens, completion_tokens, guardrail_flags, feedback FROM traces"
+                "SELECT status, intent, latency_ms, prompt_tokens, completion_tokens, guardrail_flags, feedback, attributes FROM traces"
             ).fetchall()
         n = len(rows)
         if n == 0:
@@ -221,13 +248,30 @@ class TraceStore:
         prompt_t = sum(r[3] for r in rows)
         comp_t = sum(r[4] for r in rows)
         deflected = sum(1 for r in rows if r[0] in ("ok", "clarify", "confirm"))
-        in_rate, out_rate = _price_per_mtok()
-        est_cost = round((prompt_t * in_rate + comp_t * out_rate) / 1_000_000, 6)
+        # Chỉ tính tiền lượt có model thật trả lời (attributes.llm_used); MockLLM chỉ đếm từ, không tốn tiền.
+        # Giá lấy theo đúng model của từng lượt (model chính hay model dự phòng).
+        est_cost, real_calls, real_p, real_c, sources = 0.0, 0, 0, 0, set()
+        for r in rows:
+            try:
+                used = (json.loads(r[7] or "{}") or {}).get("llm_used") or []
+            except ValueError:
+                used = []
+            if not used:
+                continue
+            in_rate, out_rate, src = _price_per_mtok(str(used[0].get("model", "")))
+            sources.add(src)
+            real_calls += 1
+            real_p += r[3] or 0
+            real_c += r[4] or 0
+            est_cost += ((r[3] or 0) * in_rate + (r[4] or 0) * out_rate) / 1_000_000
+        est_cost = round(est_cost, 6)
         return {
             "total_requests": n,
             "latency_ms": {"p50": lat[n // 2], "p95": lat[min(n - 1, int(n * 0.95))], "max": lat[-1]},
             "tokens": {"prompt": prompt_t, "completion": comp_t},
             "estimated_cost_usd": est_cost,
+            "model_usage": {"calls": real_calls, "prompt_tokens": real_p, "completion_tokens": real_c,
+                            "price_source": sorted(sources)},
             "by_status": by_status,
             "by_intent": by_intent,
             "guardrail_flags": flag_counts,
@@ -236,6 +280,7 @@ class TraceStore:
             "blocked_rate": round(by_status.get("blocked", 0) / n, 3),
             "negative_sentiment_count": sum(1 for r in rows if {"negative_sentiment", "abusive_language"} & set(json.loads(r[5] or "[]"))),
             "feedback": {"count": len(fb), "positive_rate": round(sum(1 for x in fb if x > 0) / len(fb), 3) if fb else None},
+            "csat": self._csat_summary(),
         }
 
     # ---------------- Persistence cho Orders, Tickets, Conversations, Customers, KB Gaps ----------------
@@ -285,6 +330,19 @@ class TraceStore:
                 "INSERT OR REPLACE INTO conversations VALUES (?, ?, ?)",
                 (session_id, json.dumps(payload, ensure_ascii=False, default=str), payload["updated_at"]),
             )
+
+    def delete_conversation(self, session_id: str) -> float:
+        """Xóa hội thoại và ghi mốc đóng (giây). Trả về mốc đóng."""
+        now = time.time()
+        with self._lock, self._conn() as c:
+            c.execute("DELETE FROM conversations WHERE session_id = ?", (session_id,))
+            c.execute("INSERT OR REPLACE INTO closed_conversations VALUES (?, ?)", (session_id, now))
+        return now
+
+    def closed_at(self, session_id: str) -> float | None:
+        with self._conn() as c:
+            row = c.execute("SELECT closed_at FROM closed_conversations WHERE session_id = ?", (session_id,)).fetchone()
+        return row[0] if row else None
 
     def load_conversations(self) -> dict[str, dict[str, Any]]:
         with self._conn() as c:

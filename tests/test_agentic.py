@@ -132,3 +132,29 @@ def test_conversation_qa_rule_fallback():
     msgs = [{"role": "visitor", "text": "trả góp được không"}, {"role": "agent", "text": "...", "status": "fallback"}]
     q = ai_features.score_conversation(MockLLM(), msgs)
     assert q["score"] <= 3 and q["resolved"] is False and q["ai"] is False
+
+
+class BusyVisionLLM(FakeToolLLM):
+    """Model có khả năng đọc ảnh nhưng đang quá tải (vd lỗi 429)."""
+
+    def see(self, system, prompt, image_url, json_mode=True):
+        from app.llm import LLMError
+        raise LLMError("HTTP Error 429: Too Many Requests")
+
+
+def test_vision_failure_does_not_invent_findings(store):
+    agent = OmniCareAgent(llm=BusyVisionLLM([]), store=store)
+    img = {"name": "a.jpg", "image_url": "data:image/jpeg;base64,AAAA"}
+    # Khách vãng lai gửi ảnh để tìm mẫu: không bị bắt đăng nhập, được nhờ gửi lại/mô tả
+    r = agent.handle("v1", "", image_info=img, customer={"type": "guest", "guest_code": "G9"})
+    assert r.status == "clarify" and r.intent == "image_search"
+    # Thành viên báo lỗi: vẫn tạo phiếu theo lời khách, nhưng không tự nhận đã "phát hiện" lỗi trong ảnh
+    cust = {"type": "member", "member_id": "M-1024", "phone": "0918222333", "order_ids": ["OC10005"]}
+    r = agent.handle("v2", "áo đơn OC10005 bị rách", image_info=img, customer=cust)
+    assert any(c["tool"] == "create_support_ticket" for c in r.tool_calls)
+    assert "Phát hiện" not in r.answer and "mô tả của bạn" in r.answer
+
+
+def test_cancel_intent_variants():
+    from app.agent import rule_intent
+    assert rule_intent("Hủy luôn đơn OC10005 cho mình, khỏi hỏi lại") == "cancel_order"

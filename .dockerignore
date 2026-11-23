@@ -4,7 +4,6 @@
 *.db
 *.db-*
 backups/
-.hf_static_build/
 .claude/
 .git/
 tests/

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NORIVA Việt Nam — Trang Phục LifeWear Hiện Đại | Tích Hợp OmniCare AI</title>
+<script>(function(){try{var V='2026-11-23-clean';if(localStorage.getItem('omnicare_data_version')!==V){['omnicare_store_sessions','omnicare_conv_meta','omnicare_admin_hidden','noriva_guest_code','noriva_member_keys'].forEach(function(k){localStorage.removeItem(k)});localStorage.setItem('omnicare_data_version',V);}}catch(e){}})();</script>
 <style>
   :root {
     --brand-primary: #1e3a8a;     /* Deep Royal Navy */
@@ -711,8 +712,6 @@
   .auth-tabs button.on { color: var(--text-main); border-bottom-color: var(--brand-primary); }
   .auth-label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 4px; }
   .auth-err { color: #b91c1c; font-size: 12.5px; min-height: 18px; margin-bottom: 6px; }
-  .auth-demo { background: var(--bg-subtle); padding: 10px 12px; font-size: 12px; margin-top: 14px; }
-  .auth-demo button { background: none; border: 0; color: var(--brand-primary); font-weight: 700; font-size: 12px; text-decoration: underline; margin-left: 6px; }
   .checkout-note { background: var(--bg-subtle); border-left: 3px solid var(--brand-primary); padding: 9px 12px; font-size: 12.5px; margin-bottom: 10px; }
   .checkout-note.ok { border-left-color: #059669; }
   .order-card { border: 1px solid var(--border-color); padding: 14px; }
@@ -949,15 +948,10 @@
       <button id="tabReg" onclick="authTab('register')">Đăng ký</button>
     </div>
     <form id="loginForm" onsubmit="event.preventDefault();doLogin()">
-      <label class="auth-label">Số điện thoại</label><input class="form-input" id="liPhone" placeholder="VD: 0918222333">
+      <label class="auth-label">Số điện thoại</label><input class="form-input" id="liPhone" placeholder="VD: 09xxxxxxxx">
       <label class="auth-label">Mật khẩu</label><input class="form-input" id="liPass" type="password" placeholder="••••••">
       <div class="auth-err" id="liErr"></div>
       <button class="add-cart-btn" style="width:100%;padding:12px" type="submit">ĐĂNG NHẬP</button>
-      <div class="auth-demo">Tài khoản demo (mật khẩu <b>123456</b>):
-        <button type="button" onclick="fillDemo('0918222333')">Thu Lan</button>
-        <button type="button" onclick="fillDemo('0905666777')">Minh Khoa</button>
-        <button type="button" onclick="fillDemo('0977123456')">Hà My</button>
-      </div>
     </form>
     <form id="regForm" style="display:none" onsubmit="event.preventDefault();doRegister()">
       <label class="auth-label">Họ và tên</label><input class="form-input" id="rgName" placeholder="Nguyễn Văn A">
@@ -1178,16 +1172,34 @@ function saveAccounts(list) {
   });
 }
 function currentUser() { const id = ls.get('noriva_current', null); return id ? accounts().find(a => a.memberId === id) || null : null; }
-function guestCode() {
-  let c = ls.get('noriva_guest_code', null);
-  if (!c) { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; c = Array.from({ length: 4 }, () => A[Math.floor(Math.random() * A.length)]).join(''); ls.set('noriva_guest_code', c); }
-  return c;
+// Mã ngẫu nhiên khó đoán: mã phiên là "chìa khóa" đọc hội thoại, nên không dùng mã ngắn dễ đoán.
+function randKey(n) {
+  const A = 'abcdefghijkmnpqrstuvwxyz23456789', b = new Uint8Array(n);
+  (window.crypto || window.msCrypto).getRandomValues(b);
+  return Array.from(b, x => A[x % A.length]).join('');
+}
+// Khách vãng lai: MỖI LẦN MỞ TRANG là một phiên mới (chỉ giữ trong bộ nhớ trang, không lưu lại),
+// để người dùng sau trên cùng máy không xem được lịch sử chat của người trước.
+const GUEST = { code: randKey(4).toUpperCase(), key: randKey(20) };
+(function purgeOldGuestChats() {
+  try {
+    const all = ls.get('omnicare_store_sessions', {});
+    Object.keys(all).forEach(k => { if (k.startsWith('sess-g-')) delete all[k]; });
+    if (String(ls.get('noriva_closed_view', '') || '').startsWith('sess-g-')) ls.set('noriva_closed_view', null);
+    ls.set('omnicare_store_sessions', all);
+    localStorage.removeItem('noriva_guest_code');
+  } catch (e) {}
+})();
+// Thành viên: giữ lịch sử trên trình duyệt này, mã phiên kèm khóa ngẫu nhiên riêng của trình duyệt (không đoán được).
+function memberKey(memberId) {
+  const keys = ls.get('noriva_member_keys', {});
+  if (!keys[memberId]) { keys[memberId] = randKey(16); ls.set('noriva_member_keys', keys); }
+  return keys[memberId];
 }
 function identity() {
   const u = currentUser();
-  if (u) return { type: 'member', sessionId: 'sess-' + u.memberId.toLowerCase().replace('-', ''), label: u.name, customer: { type: 'member', member_id: u.memberId, name: u.name, phone: u.phone, order_ids: u.orderIds || [] } };
-  const c = guestCode();
-  return { type: 'guest', sessionId: 'sess-g-' + c.toLowerCase(), label: 'Khách #' + c, customer: { type: 'guest', guest_code: c } };
+  if (u) return { type: 'member', sessionId: 'sess-' + u.memberId.toLowerCase().replace('-', '') + '-' + memberKey(u.memberId), label: u.name, customer: { type: 'member', member_id: u.memberId, name: u.name, phone: u.phone, order_ids: u.orderIds || [] } };
+  return { type: 'guest', sessionId: 'sess-g-' + GUEST.code.toLowerCase() + '-' + GUEST.key, label: 'Khách #' + GUEST.code, customer: { type: 'guest', guest_code: GUEST.code } };
 }
 
 let afterLogin = null;
@@ -1207,7 +1219,6 @@ function authTab(t) {
   document.getElementById('loginForm').style.display = t === 'login' ? '' : 'none';
   document.getElementById('regForm').style.display = t === 'register' ? '' : 'none';
 }
-function fillDemo(phone) { document.getElementById('liPhone').value = phone; document.getElementById('liPass').value = '123456'; }
 function doLogin() {
   const phone = document.getElementById('liPhone').value.trim();
   const pass = document.getElementById('liPass').value;
@@ -1234,14 +1245,17 @@ function doRegister() {
   signedIn(u, 'Tạo tài khoản thành công!');
 }
 function signedIn(u, msg) {
+  clearClosedView();
   ls.set('noriva_current', u.memberId);
+  switchCartOwner();
   closeAll();
   renderAccount(); updateCartUI(); renderChat();
+  storePoll();  // phiên của tài khoản này có thể đã bị đóng khi khách vắng mặt
   toast(msg);
   const fn = afterLogin; afterLogin = null;
   if (fn) fn();
 }
-function logout() { ls.set('noriva_current', null); closeAll(); renderAccount(); updateCartUI(); renderChat(); toast('Bạn đã đăng xuất.'); }
+function logout() { clearClosedView(); ls.set('noriva_current', null); switchCartOwner(); closeAll(); renderAccount(); updateCartUI(); renderChat(); toast('Bạn đã đăng xuất.'); }
 function onAccountClick(e) {
   e.stopPropagation();
   if (!currentUser()) return openAuth();
@@ -1260,8 +1274,33 @@ function closeAll() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAll(); });
 
 // ============ GIỎ HÀNG & ĐẶT HÀNG (bắt buộc tài khoản) ============
-let cart = ls.get('noriva_cart', [{ id: 'p1', size: 'L', qty: 1 }]);
-function saveCart() { ls.set('noriva_cart', cart); updateCartUI(); }
+// Giỏ hàng riêng cho từng tài khoản (localStorage['noriva_cart_<memberId>']).
+// Khách chưa đăng nhập: giỏ chỉ sống trong tab đang mở (sessionStorage), người mở link sau không thấy.
+// Đăng nhập/đăng ký: các món khách vừa chọn khi chưa đăng nhập được gộp vào giỏ của tài khoản.
+try { localStorage.removeItem('noriva_cart'); } catch (e) {}  // giỏ dùng chung kiểu cũ
+function cartKey() { const u = currentUser(); return u ? 'noriva_cart_' + u.memberId : null; }
+function guestCart() { try { return JSON.parse(sessionStorage.getItem('noriva_cart_guest') || '[]') || []; } catch (e) { return []; } }
+function loadCart() { const k = cartKey(); return k ? ls.get(k, []) : guestCart(); }
+let cart = loadCart();
+function saveCart() {
+  const k = cartKey();
+  if (k) ls.set(k, cart);
+  else try { sessionStorage.setItem('noriva_cart_guest', JSON.stringify(cart)); } catch (e) {}
+  updateCartUI();
+}
+function switchCartOwner() {
+  const k = cartKey();
+  if (k) {
+    const mine = ls.get(k, []);
+    guestCart().forEach(g => {
+      const same = mine.find(x => x.id === g.id && x.size === g.size);
+      if (same) same.qty += g.qty; else mine.push(g);
+    });
+    try { sessionStorage.removeItem('noriva_cart_guest'); } catch (e) {}
+    ls.set(k, mine);
+  }
+  cart = loadCart();
+}
 function updateCartUI() {
   document.getElementById('cartCountBadge').textContent = cart.reduce((s, x) => s + x.qty, 0);
   const sub = cartSubtotal(), fee = shipFee(sub);
@@ -1302,10 +1341,14 @@ async function checkoutNow() {
   if (!cart.length) return toast('Giỏ hàng đang trống.');
   if (!currentUser()) return openAuth('Vui lòng đăng nhập hoặc tạo tài khoản để hoàn tất đặt hàng.', () => toggleCartDrawer(true));
   const u = currentUser();
-  const product = cart.map(x => { const p = PRODUCTS.find(pp => pp.id === x.id); return `${p.name}${isFreeSize(p) ? '' : ` (Size ${x.size})`}${x.qty > 1 ? ' x' + x.qty : ''}`; }).join(', ');
-  const subtotal = cartSubtotal(), total = subtotal + shipFee(subtotal);
-  const res = await fetch('/api/orders/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product, subtotal, total, customer_name: u.name, phone: u.phone }) });
-  const order = await res.json();
+  // Chỉ gửi mã + size + số lượng; server tự tính tiền theo danh mục
+  const items = cart.map(x => ({ id: x.id, size: x.size || '', qty: x.qty }));
+  let order = null;
+  try {
+    const res = await fetch('/api/orders/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, customer_name: u.name, phone: u.phone }) });
+    order = await res.json();
+    if (!res.ok || !order.order_id) throw new Error(order.detail || 'HTTP ' + res.status);
+  } catch (e) { return toast('Chưa đặt được hàng, bạn thử lại nhé. (' + e.message + ')'); }
   const list = accounts();
   const me = list.find(a => a.memberId === u.memberId);
   me.orderIds = Array.from(new Set([...(me.orderIds || []), order.order_id]));
@@ -1410,7 +1453,39 @@ function matchProductsFallback(text, tools) {
 
 function sessions() { return ls.get('omnicare_store_sessions', {}); }
 function saveSession(id, data) { const all = sessions(); all[id] = data; ls.set('omnicare_store_sessions', all); }
-function myHistory() { return (sessions()[identity().sessionId] || {}).messages || []; }
+// Hội thoại vừa bị nhân viên đóng: vẫn hiện (kèm ô đánh giá) cho tới khi khách nhắn tin mới -> hội thoại mới.
+function closedView() { const sid = ls.get('noriva_closed_view', null); return sid && sessions()[sid] ? sid : null; }
+function myHistory() {
+  const cur = (sessions()[identity().sessionId] || {}).messages || [];
+  if (cur.length) return cur;
+  const cv = closedView();
+  return cv ? (sessions()[cv].messages || []) : cur;
+}
+function clearClosedView() {
+  const cv = closedView();
+  if (!cv) return;
+  const all = sessions(); delete all[cv]; ls.set('omnicare_store_sessions', all);
+  ls.set('noriva_closed_view', null);
+}
+// Đổi sang mã phiên mới (khóa ngẫu nhiên mới) để lần nhắn tiếp là một hội thoại mới trên server
+function rotateSession() {
+  const u = currentUser();
+  if (u) { const keys = ls.get('noriva_member_keys', {}); keys[u.memberId] = randKey(16); ls.set('noriva_member_keys', keys); }
+  else GUEST.key = randKey(20);
+}
+function onConversationClosed(sid) {
+  if (sid !== identity().sessionId) return;
+  const local = sessions()[sid] || { messages: [] };
+  if (local.closed) return;
+  local.closed = true; local.takeover = false;
+  local.messages = (local.messages || []).concat([{ role: 'csat', text: 'Nhân viên đã kết thúc cuộc trò chuyện. Bạn đánh giá trải nghiệm hỗ trợ thế nào? Nếu cần thêm, cứ nhắn để bắt đầu cuộc trò chuyện mới nhé.', at: Date.now() }]);
+  saveSession(sid, local);
+  clearClosedView();
+  ls.set('noriva_closed_view', sid);
+  rotateSession();
+  connectStoreWs();
+  renderChat();
+}
 
 function toggleWidget(forceOpen) {
   const w = document.getElementById('ocWidget');
@@ -1505,14 +1580,15 @@ function renderProductCards(prods, outfit = false) {
   }).join('')}</div>`;
 }
 function rateConversation(n) {
-  const id = identity();
   const all = sessions();
-  const sess = all[id.sessionId];
+  const cur = identity().sessionId;
+  const sid = (all[cur] && (all[cur].messages || []).length) ? cur : (closedView() || cur);
+  const sess = all[sid];
   if (!sess) return;
   sess.csat = n;
   (sess.messages || []).forEach(x => { if (x.role === 'csat' && !x.rated) x.rated = n; });
-  saveSession(id.sessionId, sess);
-  try { fetch('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trace_id: 'csat-' + id.sessionId, score: n >= 4 ? 1 : -1 }) }).catch(() => {}); } catch (e) {}
+  saveSession(sid, sess);
+  try { fetch('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trace_id: 'csat-' + sid, score: n >= 4 ? 1 : -1, stars: n }) }).catch(() => {}); } catch (e) {}
   renderChat();
   toast('Cảm ơn bạn đã đánh giá ' + n + '/5 sao!');
 }
@@ -1602,6 +1678,8 @@ async function sendStoreChat(presetText, imageInfo = null) {
   const text = (typeof presetText === 'string' ? presetText : inp.value).trim();
   if ((!text && !imageInfo) || sending) return;
   if (typeof presetText !== 'string') inp.value = '';
+  await storePoll();  // phiên hiện tại vừa bị nhân viên đóng? -> chuyển sang phiên mới trước khi gửi
+  clearClosedView();  // nhắn sau khi hội thoại cũ bị đóng: khung chat bắt đầu lại từ đầu
   const id = identity();
   const sess = sessions()[id.sessionId] || { messages: [] };
   Object.assign(sess, { type: id.type, label: id.label, customer: id.customer });
@@ -1631,6 +1709,25 @@ async function sendStoreChat(presetText, imageInfo = null) {
   renderChat();
 }
 
+// Gộp tin từ server (nguồn chính) với tin chỉ có ở trình duyệt, bỏ bản trùng:
+// cùng vai trò + cùng nội dung trong 2 phút, hoặc cùng vai trò + lệch < 4 giây (server có thể đã ẩn SĐT/email).
+// Bản sao thừa của một tin server đã khớp rồi cũng bị bỏ (dọn dữ liệu cũ bị lặp).
+function mergeMessages(serverMsgs, localMsgs) {
+  const out = (serverMsgs || []).slice();
+  const n = out.length, used = new Set();
+  const same = (x, m) => x.role === m.role && (
+    (x.text === m.text && Math.abs((x.at || 0) - (m.at || 0)) < 120000) ||
+    (x.at && m.at && Math.abs(x.at - m.at) < 4000));
+  (localMsgs || []).forEach(m => {
+    let i = -1;
+    for (let k = 0; k < n; k++) if (!used.has(k) && same(out[k], m)) { i = k; break; }
+    if (i >= 0) { used.add(i); if (m.image_url && !out[i].image_url) out[i] = { ...out[i], image_url: m.image_url }; return; }
+    for (let k = 0; k < n; k++) if (same(out[k], m)) return;
+    out.push(m);
+  });
+  return out.map((m, k) => [m, k]).sort((a, b) => ((a[0].at || 0) - (b[0].at || 0)) || (a[1] - b[1])).map(x => x[0]);
+}
+
 // Đồng bộ 2 chiều real-time: nhận phản hồi của nhân viên CSKH từ Admin CRM qua WebSocket + API + localStorage
 function applyRemoteConversation(conv) {
   if (!conv || !conv.id) return;
@@ -1640,19 +1737,9 @@ function applyRemoteConversation(conv) {
   const remoteMsgs = conv.messages || [];
   let changed = (Boolean(conv.takeover) !== Boolean(local.takeover));
   local.takeover = Boolean(conv.takeover);
-  if (remoteMsgs.length >= (local.messages || []).length) {
-    if (JSON.stringify(local.messages) !== JSON.stringify(remoteMsgs)) changed = true;
-    local.messages = remoteMsgs;
-  } else {
-    const known = new Set((local.messages || []).map(m => `${m.role}|${m.at || ''}|${m.text || ''}`));
-    for (const rm of remoteMsgs) {
-      const k = `${rm.role}|${rm.at || ''}|${rm.text || ''}`;
-      if (!known.has(k)) {
-        local.messages.push(rm);
-        changed = true;
-      }
-    }
-  }
+  const merged = remoteMsgs.length ? mergeMessages(remoteMsgs, local.messages || []) : (local.messages || []);
+  if (JSON.stringify(local.messages || []) !== JSON.stringify(merged)) changed = true;
+  local.messages = merged;
   if (changed) {
     saveSession(id.sessionId, local);
     renderChat();
@@ -1661,30 +1748,55 @@ function applyRemoteConversation(conv) {
 window.addEventListener('storage', (ev) => {
   if (ev.key === 'omnicare_store_sessions') renderChat();
 });
-(function connectStoreWs() {
+// Chỉ nghe đúng phiên của mình (?sid=): server không gửi hội thoại của khách khác cho trang bán hàng.
+// Đăng nhập/đăng xuất làm đổi phiên thì nối lại.
+let STORE_WS = null, STORE_WS_SID = null;
+function connectStoreWs() {
   try {
-    if (location.hostname.endsWith('.hf.space')) return;
+    const sid = identity().sessionId;
+    if (STORE_WS && STORE_WS_SID === sid && STORE_WS.readyState <= 1) return;
+    if (STORE_WS) { const old = STORE_WS; STORE_WS = null; try { old.close(); } catch (e) {} }
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${proto}//${location.host}/ws/crm`);
+    const ws = STORE_WS = new WebSocket(`${proto}//${location.host}/ws/crm?sid=${encodeURIComponent(sid)}`);
+    STORE_WS_SID = sid;
+    ws.onclose = () => { if (STORE_WS === ws) STORE_WS = null; };
     ws.onmessage = (ev) => {
       try {
         const d = JSON.parse(ev.data);
+        if (d.event === 'conversation_closed') return onConversationClosed(d.session_id);  // phiên khác: hàm tự bỏ qua
         if (d.conversation) applyRemoteConversation(d.conversation);
       } catch (e) {}
     };
   } catch (e) {}
-})();
-setInterval(async () => {
+}
+connectStoreWs();
+// Hỏi server định kỳ (và ngay khi mở trang): nhân viên đã đóng phiên này chưa (closed_at lưu trong SQLite,
+// nên kể cả lúc đóng trang khách không mở hay server đã khởi động lại vẫn biết), có tin mới của nhân viên không.
+async function storePoll() {
+  connectStoreWs();
   if (sending) return;
   try {
     const id = identity();
+    const local = sessions()[id.sessionId] || { messages: [] };
+    if (!(local.messages || []).length) return;  // phiên chưa có tin nào: không cần hỏi
     const r = await fetch(`/api/conversations/${encodeURIComponent(id.sessionId)}`);
-    if (r.ok) {
-      const conv = await r.json();
-      if (conv && conv.messages && conv.messages.length) applyRemoteConversation(conv);
+    if (!r.ok) return;
+    const conv = await r.json();
+    const lastLocal = Math.max(0, ...(local.messages || []).map(m => m.at || 0));
+    if (conv && conv.closed_at && local.closedSeen !== conv.closed_at) {
+      const cut = conv.closed_at * 1000;
+      if (lastLocal <= cut + 2000) return onConversationClosed(id.sessionId);
+      // Khách đã nhắn tiếp trên phiên cũ sau khi bị đóng: bỏ các tin trước mốc đóng, chỉ giữ cuộc trò chuyện mới
+      local.messages = (local.messages || []).filter(m => (m.at || 0) > cut);
+      local.closedSeen = conv.closed_at;
+      saveSession(id.sessionId, local);
+      renderChat();
     }
+    if (conv && conv.messages && conv.messages.length) applyRemoteConversation(conv);
   } catch (e) {}
-}, 3500);
+}
+setInterval(storePoll, 3500);
+storePoll();
 
 renderProducts(PRODUCTS);
 updateCartUI();

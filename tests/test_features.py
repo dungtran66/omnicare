@@ -149,3 +149,48 @@ def test_weekly_report_fallback_uses_real_numbers():
     rep = ai_features.weekly_report(MockLLM(), stats)
     assert stats["total"] == 3 and "3 tin nhắn" in rep["markdown"] and "sửa gấu quần" in rep["markdown"]
     assert ("hỏi chính sách", 3) in stats["top_intents"]
+
+
+def test_order_price_computed_on_server():
+    """Trình duyệt chỉ gửi mã + size + số lượng; giá lấy từ danh mục, số tiền gửi kèm bị bỏ qua."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    c = TestClient(app)
+    o = c.post("/api/orders/create", json={"items": [{"id": "p6", "size": "L", "qty": 1}], "subtotal": 1000, "total": 1000}).json()
+    assert o["subtotal"] == 1470000 and o["shipping_fee"] == 0 and o["total"] == 1470000
+    assert "Áo Phao" in o["product"] and "(Size L)" in o["product"]
+    assert c.post("/api/orders/create", json={"items": [{"id": "khong-co", "qty": 1}]}).status_code == 400
+
+
+def test_close_conversation_deletes_and_marks_closed(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(auth, "USERS_FILE", tmp_path / "users.json")
+    monkeypatch.setattr(auth, "ENABLED", True)
+    from app.main import app
+    c = TestClient(app)
+    c.post("/api/chat", json={"session_id": "close-1", "message": "chào shop", "customer": {"type": "guest", "guest_code": "AB12"}})
+    assert c.post("/api/conversations/close-1/close").status_code == 401  # cần đăng nhập Admin
+    h = {"Authorization": "Bearer " + c.post("/api/admin/login", json={"user": "admin", "password": "admin123"}).json()["token"]}
+    assert c.post("/api/conversations/close-1/close", headers=h).json()["deleted"] is True
+    d = c.get("/api/conversations/close-1").json()
+    assert d["messages"] == [] and d["closed_at"]
+    assert all(x["id"] != "close-1" for x in c.get("/api/conversations", headers=h).json())
+
+
+def test_csat_stars_recorded():
+    from fastapi.testclient import TestClient
+    from app.main import app, agent
+    c = TestClient(app)
+    c.post("/api/chat", json={"session_id": "csat-s", "message": "phí ship bao nhiêu"})
+    assert c.post("/api/feedback", json={"trace_id": "csat-sess-g-x", "score": 1, "stars": 5}).status_code == 200
+    assert agent.store.metrics()["csat"]["count"] >= 1
+
+
+def test_chat_rejects_unsafe_session_id():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    c = TestClient(app)
+    r = c.post("/api/chat", json={"message": "xin chào", "session_id": "x');alert(1);//"})
+    assert r.status_code == 422
+    r = c.post("/api/chat", json={"message": "xin chào", "session_id": "sess-g-ABCD-abc123"})
+    assert r.status_code == 200

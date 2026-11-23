@@ -91,6 +91,11 @@ def render_context(context: dict[str, Any]) -> str:
     return "\n\n".join(parts) or "(không có ngữ cảnh)"
 
 
+# Số yêu cầu tới model chạy cùng lúc trong 1 tiến trình (proxy codex.fosta.app cho tối đa 4/tài khoản).
+_INFLIGHT = threading.BoundedSemaphore(max(1, int(os.getenv("LLM_MAX_CONCURRENCY", "3"))))
+_RETRY_429 = (1.5, 4.0)  # giây chờ trước lần thử lại thứ 1, 2 khi bị 429
+
+
 class OpenAICompatibleLLM(LLM):
     name = "openai"
     supports_tools = True
@@ -106,17 +111,27 @@ class OpenAICompatibleLLM(LLM):
         self.fallback_models = [m for m in (fallback_models or []) if m and m != model]
 
     def _post(self, payload: dict[str, Any], timeout: float) -> dict[str, Any]:
+        """Gọi /chat/completions. Giới hạn số yêu cầu chạy cùng lúc (LLM_MAX_CONCURRENCY) để không tự gây lỗi 429;
+        gặp 429 thì chờ ngắn rồi thử lại cùng model (model dự phòng thường dùng chung tài khoản nên chuyển cũng vô ích)."""
         quota_take()
-        req = urllib.request.Request(
-            f"{self.base_url}/chat/completions",
-            data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"},
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read())
-        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
-            raise LLMError(f"Lỗi gọi model: {exc}") from exc
+        body = json.dumps(payload).encode()
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
+        for attempt in range(len(_RETRY_429) + 1):
+            if not _INFLIGHT.acquire(timeout=timeout):
+                raise LLMError("Lỗi gọi model: hàng chờ gọi model quá lâu")
+            try:
+                req = urllib.request.Request(f"{self.base_url}/chat/completions", data=body, headers=headers)
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    return json.loads(resp.read())
+            except urllib.error.HTTPError as exc:
+                if exc.code != 429 or attempt == len(_RETRY_429):
+                    raise LLMError(f"Lỗi gọi model: {exc}") from exc
+            except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
+                raise LLMError(f"Lỗi gọi model: {exc}") from exc
+            finally:
+                _INFLIGHT.release()
+            time.sleep(_RETRY_429[attempt])
+        raise LLMError("Lỗi gọi model: quá nhiều yêu cầu")
 
     def _models(self):
         for i, mdl in enumerate([self.model, *self.fallback_models]):

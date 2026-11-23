@@ -257,10 +257,10 @@ async function checkout() {
   if (!CART.length) { err.textContent = 'Giỏ hàng đang trống.'; return; }
   if (!USER) { err.textContent = 'Vui lòng đăng nhập để đặt hàng.'; openAccount(); return; }
   err.textContent = '';
-  const product = CART.map(c => `${c.name} (${c.variant}) x${c.qty}`).join(', ').slice(0, 480);
-  const total = CART.reduce((s, c) => s + c.price * c.qty, 0);
+  // Chỉ gửi mã + biến thể + số lượng; server tự tính tiền theo danh mục
+  const items = CART.map(c => ({ id: c.id, size: c.variant || '', qty: c.qty }));
   const r = await fetch('/api/orders/create', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ product, total, customer_name: USER.name, phone: USER.phone }) });
+    body: JSON.stringify({ items, customer_name: USER.name, phone: USER.phone }) });
   if (!r.ok) { err.textContent = 'Không đặt được hàng, vui lòng thử lại.'; return; }
   const o = await r.json();
   CART = []; store.set(key('cart'), CART); renderCart();

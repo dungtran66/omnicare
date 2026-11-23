@@ -13,7 +13,6 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from . import config
 from .rag import BM25Retriever, normalize, tokenize
 from .shop import active as active_shop
 
