@@ -1,4 +1,4 @@
-# OmniCare — AI Agent chăm sóc khách hàng cho cửa hàng online
+# OmniCare — AI Agent chăm sóc khách hàng cho shop quần áo online
 
 OmniCare là trợ lý AI trả lời khách ngay trên trang bán hàng: tư vấn sản phẩm, chọn size, phối đồ, tra đơn, đổi trả, hủy đơn.
 Câu nào AI không chắc hoặc khách cần người thật thì chuyển cho nhân viên, và nhân viên tiếp quản trên trang Admin.
@@ -9,6 +9,8 @@ Bản demo chạy trên shop thời trang **NORIVA** với hai trang:
 |---|---|---|
 | Trang bán hàng | `/store` | Khách mua hàng: xem sản phẩm, giỏ hàng, đặt hàng, chat với AI |
 | Admin CRM | `/` | Nhân viên và quản lý: hộp thư hội thoại, tiếp quản, phiếu hỗ trợ, theo dõi chất lượng AI |
+
+Ngoài thời trang, hệ thống chạy được cho ngành khác chỉ bằng cách thay dữ liệu shop (xem mục 6, ví dụ shop đồ điện tử `techzone`).
 
 Hệ thống có đủ 6 thành phần theo yêu cầu: **Model · Workflow agent · RAG + MCP tools · Guardrails · Observability · Evals**.
 
