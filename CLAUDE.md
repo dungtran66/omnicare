@@ -91,7 +91,7 @@ python -m evals.run_evals --threshold 0.95
 
 > **Đã bỏ (23/11/2026)** — cất trong `backups/removed/`: bản web tĩnh Hugging Face (`scripts/deploy_hf.py`, `scripts/edge_extensions.js`,
 > `.hf_static_build/`; 4 link Claude Artifact cũ đã xóa hẳn), Chatwoot (endpoint, docker-compose, `chatwoot.env.example`, `docs/chatwoot_setup.md`),
-> `scripts/deploy_hf_docker.py`, `render.yaml`. Chỉ còn backend thật (chia sẻ qua đường hầm Cloudflare). Sửa logic agent chỉ cần sửa Python.
+> `scripts/deploy_hf_docker.py`. Chỉ còn backend thật: chia sẻ tạm qua đường hầm Cloudflare, link cố định qua Render (`render.yaml` khôi phục 23/11/2026, Docker, `ADMIN_PASSWORD` thay mật khẩu demo khi tạo tài khoản lần đầu). Sửa logic agent chỉ cần sửa Python.
 > Các ghi chú cũ bên dưới nhắc "engine JS / bản tĩnh / deploy_hf.py" không còn áp dụng.
 
 Khi chỉnh sửa tiếp giao diện, cần giữ các quy ước mà người dùng đã yêu cầu:

@@ -127,6 +127,17 @@ GitHub Actions (`.github/workflows/evals.yml`) chạy unit test và 62 tình hu�
 
 ---
 
+## Link cố định (Render)
+
+Repo có sẵn `render.yaml` để đưa lên [Render](https://render.com) miễn phí: đăng nhập Render bằng GitHub →
+**New → Blueprint** → chọn repo này → điền `LLM_API_KEY` (khóa model) và `ADMIN_PASSWORD` (mật khẩu Admin) → **Apply**.
+Sau vài phút sẽ có link dạng `https://omnicare-ai-agent.onrender.com` (bán hàng ở `/store`).
+
+Gói miễn phí: dịch vụ ngủ sau 15 phút không ai vào (lần mở đầu chờ khoảng 1 phút), và dữ liệu (hội thoại, đơn mới, trace)
+bị xóa mỗi khi dịch vụ khởi động lại hoặc cập nhật code.
+
+---
+
 ## 6. Cấu trúc thư mục
 
 ```text

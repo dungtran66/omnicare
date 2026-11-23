@@ -60,6 +60,8 @@ def _load() -> dict[str, dict[str, str]]:
     if not USERS_FILE.exists():
         users = {}
         for u, p, n in _DEMO:
+            # Bản công khai: ADMIN_PASSWORD (biến môi trường) thay mật khẩu demo của mọi tài khoản
+            p = os.getenv("ADMIN_PASSWORD") or p
             salt = secrets.token_hex(16)
             users[u] = {"name": n, "salt": salt, "hash": _hash(p, salt)}
         _save(users)
