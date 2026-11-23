@@ -114,13 +114,13 @@ Nếu model lỗi, hết lượt hoặc thiếu khóa, agent tự rơi về Mock
 ## 5. Kiểm thử
 
 ```bash
-pytest tests -q                                                       # 65 unit test, luôn chạy Mock, không tốn API
+pytest tests -q                                                       # 66 unit test, luôn chạy Mock, không tốn API
 python -m evals.run_evals --threshold 0.95                            # 62 tình huống, chấm bằng luật (cổng CI)
 python -m evals.run_evals --judge llm --delay 2                       # như trên nhưng GPT trả lời và GPT chấm
 python -m evals.run_evals --dataset evals/dataset_gpt.jsonl --judge llm   # 12 tình huống tính năng GPT (đọc ảnh, tự gọi công cụ…)
 ```
 
-Kết quả gần nhất (23/11/2026): 65/65 unit test, 62/62 tình huống Mock đạt. GPT chấm trung bình 4.36/5, nhưng lượt đó API quá tải
+Kết quả gần nhất (23/11/2026): 66/66 unit test, 62/62 tình huống Mock đạt. GPT chấm trung bình 4.36/5, nhưng lượt đó API quá tải
 nên chỉ khoảng 21% câu do GPT trả lời; cần chạy lại khi API ổn định. Chi tiết ở `docs/ARCHITECTURE.md` mục 6.
 
 GitHub Actions (`.github/workflows/evals.yml`) chạy unit test và 62 tình huống Mock ở mỗi lần push.
@@ -178,6 +178,23 @@ omnicare/
 
 Khách từ Zalo, Facebook, Telegram được coi là khách vãng lai (không tra được đơn).
 
+### Gắn chat vào website có sẵn của shop
+
+Dán 1 dòng này trước thẻ `</body>` của website (Haravan, WordPress, Shopify, trang HTML tự làm…):
+
+```html
+<script src="https://omnicare-ai-agent.onrender.com/widget.js" data-color="#1f1f1f" async></script>
+```
+
+Website sẽ có nút chat ở góc phải: AI trả lời ngay, hiện thẻ sản phẩm, nhân viên tiếp quản được từ Admin như mọi hội thoại khác.
+Tùy chọn: `data-title` (tiêu đề), `data-color` (màu), `data-welcome` (lời chào), `data-position="left"`.
+Admin → Kênh kết nối → Website tạo sẵn mã theo cấu hình; xem thử trên website mẫu tại `/widget-demo`.
+
+- Mỗi shop chạy **một server OmniCare riêng** (vd mỗi shop một dịch vụ Render với `SHOP=<id>`); widget tự nói chuyện với server đã phục vụ nó.
+- Khách trên widget là khách vãng lai: hỏi sản phẩm, size, phí ship, đổi trả. Tra đơn cần website của shop cung cấp đăng nhập.
+- Ảnh trong thẻ sản phẩm lấy từ trường `image` trong `products.json` (nếu có), không thì dùng `/img/<mã sản phẩm>.jpg`.
+- Giới hạn website được nhúng bằng biến `WIDGET_ORIGINS` (danh sách phẩy, vd `https://shopabc.vn`); mặc định cho phép mọi website.
+
 ---
 
 ## 8. Lưu ý bảo mật
@@ -188,3 +205,9 @@ Khách từ Zalo, Facebook, Telegram được coi là khách vãng lai (không t
 - Tóm tắt bàn giao, điểm chất lượng và trí nhớ về khách là dữ liệu nội bộ, không trả về cho khách.
 - Mỗi lần mở trang bán hàng, khách vãng lai bắt đầu một hội thoại mới, nên người dùng chung máy không xem được lịch sử chat của nhau.
 - Tài khoản khách trên trang demo lưu trong trình duyệt (`localStorage`); bản thật cần thay bằng hệ thống tài khoản phía server.
+
+---
+
+## Giấy phép
+
+Phát hành theo [giấy phép MIT](LICENSE): được dùng, sửa và áp dụng cho shop của bạn, kể cả mục đích thương mại, miễn giữ lại thông tin tác giả.

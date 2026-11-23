@@ -1330,7 +1330,11 @@
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Mã nhúng <span class="pf-muted">dán trước thẻ &lt;/body&gt;</span></label>
-              <div class="pf-code"><code>&lt;script src="http://127.0.0.1:8000/widget.js?api_key=ak_live_omnicare_mvp" async&gt;&lt;/script&gt;</code></div>
+              <div class="pf-code"><code id="widgetEmbedCode"></code></div>
+              <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+                <button class="btn-ghost" style="padding:5px 12px;font-size:12px" onclick="copyWidgetCode(this)">Sao chép mã</button>
+                <a class="btn-ghost" style="padding:5px 12px;font-size:12px;text-decoration:none" href="/widget-demo" target="_blank" rel="noopener">Xem thử trên website mẫu ↗</a>
+              </div>
             </div>
           </div>
 
@@ -3000,7 +3004,22 @@ function applyWidgetConfig() {
   document.getElementById('widgetHeaderBar').style.background = color;
   const hex = document.getElementById('cfgThemeColorHex'); if (hex) hex.textContent = color;
   document.getElementById('widgetWelcomeBubble').textContent = welcome;
+  const code = document.getElementById('widgetEmbedCode'); if (code) code.textContent = widgetEmbedCode();
 }
+function widgetEmbedCode() {
+  const attr = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  const title = document.getElementById('cfgWidgetTitle').value.trim();
+  const color = document.getElementById('cfgThemeColor').value;
+  const welcome = document.getElementById('cfgWelcome').value.trim();
+  return `<script src="${location.origin}/widget.js"` + (title ? ` data-title="${attr(title)}"` : '') +
+    ` data-color="${color}"` + (welcome ? ` data-welcome="${attr(welcome)}"` : '') + ' async></' + 'script>';
+}
+async function copyWidgetCode(btn) {
+  try { await navigator.clipboard.writeText(widgetEmbedCode()); btn.textContent = 'Đã sao chép ✓'; }
+  catch (e) { btn.textContent = 'Hãy bôi đen mã để sao chép'; }
+  setTimeout(() => { btn.textContent = 'Sao chép mã'; }, 2000);
+}
+try { applyWidgetConfig(); } catch (e) {}
 function pfJump(id, btn) {
   document.querySelectorAll('#page-platforms .sub-nav-item').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');

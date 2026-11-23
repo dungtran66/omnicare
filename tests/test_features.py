@@ -194,3 +194,19 @@ def test_chat_rejects_unsafe_session_id():
     assert r.status_code == 422
     r = c.post("/api/chat", json={"message": "xin chào", "session_id": "sess-g-ABCD-abc123"})
     assert r.status_code == 200
+
+
+def test_widget_js_and_cors():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    c = TestClient(app)
+    r = c.get("/widget.js")
+    assert r.status_code == 200 and "javascript" in r.headers["content-type"]
+    pre = c.options("/api/chat", headers={"Origin": "https://shop-khac.vn", "Access-Control-Request-Method": "POST"})
+    assert pre.status_code == 204 and pre.headers["access-control-allow-origin"] == "*"
+    r = c.post("/api/chat", json={"message": "phí ship bao nhiêu", "session_id": "w-abcd-test0001"},
+               headers={"Origin": "https://shop-khac.vn"})
+    assert r.status_code == 200 and r.headers.get("access-control-allow-origin") == "*"
+    # API quản trị không mở CORS cho website khác
+    r = c.get("/api/conversations", headers={"Origin": "https://shop-khac.vn"})
+    assert "access-control-allow-origin" not in r.headers

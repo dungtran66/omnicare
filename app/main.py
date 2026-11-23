@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -29,6 +29,31 @@ NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}  # trình duyệt luô
 app = FastAPI(title="OmniCare", version="0.2.0", description="AI Agent chăm sóc khách hàng - Production Ready")
 agent = OmniCareAgent()
 STATIC = Path(__file__).parent / "static"
+
+
+# Widget nhúng trên website khác gọi các API khách này (không cookie; API Admin vẫn cần token Bearer)
+_WIDGET_API = re.compile(r"^/api/(chat|chat/stream|shop|conversations/[A-Za-z0-9_.:-]{1,120})$")
+_WIDGET_ORIGINS = [o.strip() for o in os.getenv("WIDGET_ORIGINS", "*").split(",") if o.strip()]
+
+
+def _cors_origin(origin: str | None) -> str | None:
+    if not origin:
+        return None
+    return "*" if "*" in _WIDGET_ORIGINS else (origin if origin in _WIDGET_ORIGINS else None)
+
+
+@app.middleware("http")
+async def widget_cors(request: Request, call_next):
+    """CORS cho widget.js: chỉ các API khách (chat, thông tin shop, đọc hội thoại theo mã phiên)."""
+    allow = _cors_origin(request.headers.get("origin")) if _WIDGET_API.match(request.url.path) else None
+    if allow and request.method == "OPTIONS":
+        return Response(status_code=204, headers={
+            "Access-Control-Allow-Origin": allow, "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "600"})
+    resp = await call_next(request)
+    if allow:
+        resp.headers["Access-Control-Allow-Origin"] = allow
+    return resp
 
 
 @app.middleware("http")
@@ -907,6 +932,19 @@ def create_order(req: CreateOrderRequest) -> dict[str, Any]:
 @app.get("/index.html")
 def index() -> FileResponse:
     return FileResponse(STATIC / "index.html", headers=NO_CACHE)
+
+
+@app.get("/widget.js")
+def widget_js() -> FileResponse:
+    """Mã nhúng chat cho website bất kỳ: <script src="https://<server>/widget.js" async></script>"""
+    return FileResponse(STATIC / "widget.js", media_type="application/javascript",
+                        headers={"Cache-Control": "public, max-age=300", "Access-Control-Allow-Origin": "*"})
+
+
+@app.get("/widget-demo")
+def widget_demo_page() -> FileResponse:
+    """Website mẫu của "một shop khác" có dán widget.js, để xem thử mã nhúng."""
+    return FileResponse(STATIC / "widget-demo.html", headers=NO_CACHE)
 
 
 @app.get("/store")
