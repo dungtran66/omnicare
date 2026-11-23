@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" id="ocFavicon" type="image/svg+xml" href="">
-<script>(function(){try{var t=JSON.parse(localStorage.getItem('omnicare_admin_theme')||'{}');var m=t.mode||'dark';var d=m==='system'?window.matchMedia('(prefers-color-scheme: dark)').matches:m==='dark';document.documentElement.classList.toggle('dark',d);if(t.surface)document.documentElement.setAttribute('data-surface',t.surface);}catch(e){}})();</script>
+<script>(function(){try{var t=JSON.parse(localStorage.getItem('omnicare_admin_theme')||'{}');var m=t.mode||'dark';var d=m==='system'?window.matchMedia('(prefers-color-scheme: dark)').matches:m==='dark';document.documentElement.classList.toggle('dark',d);document.documentElement.setAttribute('data-surface',t.surface||'oled');}catch(e){}})();</script>
 <title>OmniCare — AI Agent Customer Service Platform (TGO UI)</title>
 <script>(function(){try{var V='2026-11-23-clean';if(localStorage.getItem('omnicare_data_version')!==V){['omnicare_store_sessions','omnicare_conv_meta','omnicare_admin_hidden','noriva_guest_code','noriva_member_keys'].forEach(function(k){localStorage.removeItem(k)});localStorage.setItem('omnicare_data_version',V);}}catch(e){}})();</script>
 <style>
@@ -1753,8 +1753,9 @@ function switchPage(pageId) {
 
 // ===================== THEME ENGINE =====================
 const THEME_KEY = 'omnicare_admin_theme';
-const THEME_DEFAULT = { mode: 'dark', accent: '#2563eb', surface: 'midnight' };
+const THEME_DEFAULT = { mode: 'dark', accent: '#1f1f1f', surface: 'oled' };
 const ACCENTS = [
+  { name: 'Đen (mặc định)', hex: '#1f1f1f', alt: '#903662' },
   { name: 'Royal Blue', hex: '#2563eb', alt: '#7c3aed' },
   { name: 'NORIVA Navy', hex: '#1e3a8a', alt: '#2563eb' },
   { name: 'Indigo', hex: '#4f46e5', alt: '#db2777' },
@@ -1789,7 +1790,7 @@ function applyTheme() {
   const root = document.documentElement;
   const dark = _isDarkNow();
   root.classList.toggle('dark', dark);
-  root.setAttribute('data-surface', themeState.surface || 'midnight');
+  root.setAttribute('data-surface', themeState.surface || 'oled');
   const accent = themeState.accent;
   const preset = ACCENTS.find(a => a.hex.toLowerCase() === accent.toLowerCase());
   const alt = preset ? preset.alt : _mix(accent, '#ec4899', 0.55);

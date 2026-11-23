@@ -29,6 +29,8 @@ from .rag import normalize
 from .shop import active as active_shop
 from .tools import ToolError, ToolRegistry
 
+SAFE_SID_RE = re.compile(r"[A-Za-z0-9_.:-]{1,120}")
+
 
 def system_prompt() -> str:
     return f"""Bạn là OmniCare, trợ lý chăm sóc khách hàng của {active_shop().intro}.
@@ -301,7 +303,9 @@ class OmniCareAgent:
         self.tools = tools or ToolRegistry(store=self.store)
         if self.tools.store is None:
             self.tools.store = self.store
-        self.sessions: dict[str, dict[str, Any]] = self.store.load_conversations()
+        # Chỉ nạp phiên có mã hợp lệ (mã phiên được chèn vào HTML ở Admin)
+        self.sessions: dict[str, dict[str, Any]] = {
+            k: v for k, v in self.store.load_conversations().items() if SAFE_SID_RE.fullmatch(str(k))}
 
     def _session(self, sid: str) -> dict[str, Any]:
         s = self.sessions.setdefault(sid, {
